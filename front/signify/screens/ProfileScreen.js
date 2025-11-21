@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +7,25 @@ import { colors } from '../styles/colors';
 
 const ProfileScreen = () => {
   const { user, signOut } = useAuth();
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: signOut,
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -22,18 +41,26 @@ const ProfileScreen = () => {
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
-            {user?.picture ? (
-              <View style={styles.profileImageContainer}>
-                <Image
-                  source={{ uri: user.picture }}
-                  style={styles.profileImage}
-                />
-              </View>
-            ) : (
-              <View style={styles.profileIconContainer}>
-                <Ionicons name="person" size={40} color={colors.brutalWhite} />
-              </View>
-            )}
+            <View style={styles.profileImageWrapper}>
+              {user?.picture ? (
+                <View style={styles.profileImageContainer}>
+                  <Image
+                    source={{ uri: user.picture }}
+                    style={styles.profileImage}
+                  />
+                </View>
+              ) : (
+                <View style={styles.profileIconContainer}>
+                  <Ionicons name="person" size={40} color={colors.brutalWhite} />
+                </View>
+              )}
+              {/* Show Google badge if signed in with Google */}
+              {user?.picture && (
+                <View style={styles.googleBadge}>
+                  <Ionicons name="logo-google" size={16} color={colors.brutalWhite} />
+                </View>
+              )}
+            </View>
             <Text style={styles.profileName}>
               {user?.name || 'Guest User'}
             </Text>
@@ -91,7 +118,7 @@ const ProfileScreen = () => {
 
         {/* Sign Out Button */}
         <TouchableOpacity
-          onPress={signOut}
+          onPress={handleSignOut}
           style={styles.signOutButton}
           activeOpacity={0.9}
         >
@@ -142,22 +169,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 24,
   },
+  profileImageWrapper: {
+    position: 'relative',
+    marginBottom: 16,
+  },
   profileImageContainer: {
     width: 96,
     height: 96,
     borderWidth: 3,
     borderColor: colors.brutalBlack,
+    borderRadius: 48,
     overflow: 'hidden',
-    marginBottom: 16,
     shadowColor: colors.brutalBlack,
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 4,
+    backgroundColor: colors.brutalWhite,
   },
   profileImage: {
-    width: 93,
-    height: 93,
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
   },
   profileIconContainer: {
     width: 96,
@@ -165,14 +198,32 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brutalBlue,
     borderWidth: 3,
     borderColor: colors.brutalBlack,
+    borderRadius: 48,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
     shadowColor: colors.brutalBlack,
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 0,
     elevation: 4,
+  },
+  googleBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: colors.brutalRed,
+    borderWidth: 3,
+    borderColor: colors.brutalBlack,
+    borderRadius: 14,
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.brutalBlack,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 5,
   },
   profileName: {
     fontSize: 20,

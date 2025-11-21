@@ -1,10 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
 import {
-  signInWithCredential,
-  GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
@@ -18,9 +14,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
-import { Alert, Platform } from 'react-native';
-
-WebBrowser.maybeCompleteAuthSession();
+import { Alert } from 'react-native';
 
 const AuthContext = createContext({});
 
@@ -29,22 +23,6 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // Configure Google OAuth
-  // For testing, we'll skip Google OAuth on mobile and use email auth
-  // To enable Google Sign-In on iOS/Android, you need to:
-  // 1. Create iOS/Android OAuth clients in Google Cloud Console
-  // 2. Add the client IDs below
-  const useGoogleAuth = Platform.OS === 'web'; // Only use Google Auth on web for now
-
-  const [request, response, promptAsync] = useGoogleAuth ? Google.useAuthRequest({
-    // Web client ID for Expo web
-    webClientId: '627802289784-REPLACE_WITH_YOUR_CLIENT_ID.apps.googleusercontent.com',
-    // To enable on iOS, uncomment and add your iOS client ID:
-    // iosClientId: 'YOUR_IOS_CLIENT_ID.apps.googleusercontent.com',
-    // To enable on Android, uncomment and add your Android client ID:
-    // androidClientId: 'YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com',
-  }) : [null, null, null];
 
   useEffect(() => {
     // Listen for authentication state changes
@@ -76,11 +54,6 @@ export const AuthProvider = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  useEffect(() => {
-    if (response) {
-      handleGoogleSignInResponse();
-    }
-  }, [response]);
 
   const saveUserToFirestore = async (firebaseUser) => {
     try {
@@ -115,48 +88,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const handleGoogleSignInResponse = async () => {
-    if (response?.type === 'success') {
-      const { authentication } = response;
-
-      try {
-        // Create a Firebase credential with the Google access token
-        const credential = GoogleAuthProvider.credential(
-          authentication.idToken,
-          authentication.accessToken
-        );
-
-        // Sign in with Firebase
-        const userCredential = await signInWithCredential(auth, credential);
-
-        // User data will be handled by onAuthStateChanged listener
-        console.log('Google sign in successful:', userCredential.user.email);
-      } catch (error) {
-        console.error('Error during Google sign in:', error);
-        Alert.alert('Sign In Error', 'Failed to sign in with Google. Please try again.');
-      }
-    }
-  };
-
-  const signInWithGoogle = async () => {
-    if (!promptAsync) {
-      // Google Auth not available on this platform
-      Alert.alert(
-        'Not Available on Mobile',
-        'Google Sign-In is currently only available on web.\n\nPlease use email/password sign in instead.',
-        [{ text: 'OK' }]
-      );
-      return { type: 'dismiss' };
-    }
-
-    try {
-      const result = await promptAsync();
-      return result;
-    } catch (error) {
-      console.error('Error signing in with Google:', error);
-      throw error;
-    }
-  };
 
   const signUpWithEmail = async (email, password, name) => {
     try {
@@ -228,7 +159,6 @@ export const AuthProvider = ({ children }) => {
   const value = {
     user,
     loading,
-    signInWithGoogle,
     signUpWithEmail,
     signInWithEmail,
     signOut,

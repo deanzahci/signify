@@ -12,25 +12,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../styles/colors';
 
 const SignInScreen = ({ navigation }) => {
-  const { signInWithGoogle, signInWithEmail } = useAuth();
+  const { signInWithEmail } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const handleGoogleSignIn = async () => {
-    try {
-      setLoading(true);
-      await signInWithGoogle();
-    } catch (error) {
-      Alert.alert('Sign In Error', 'Failed to sign in with Google. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleEmailSignIn = async () => {
     if (!email || !password) {
@@ -99,25 +87,10 @@ const SignInScreen = ({ navigation }) => {
                 style={styles.primaryButton}
                 onPress={handleEmailSignIn}
                 activeOpacity={0.9}
-              >
-                <Text style={styles.primaryButtonText}>SIGN IN</Text>
-              </TouchableOpacity>
-
-              <View style={styles.dividerContainer}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>OR</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={handleGoogleSignIn}
-                activeOpacity={0.9}
                 disabled={loading}
               >
-                <Ionicons name="logo-google" size={20} color="#000000" />
-                <Text style={styles.secondaryButtonText}>
-                  {loading ? 'SIGNING IN...' : 'SIGN IN WITH GOOGLE'}
+                <Text style={styles.primaryButtonText}>
+                  {loading ? 'SIGNING IN...' : 'SIGN IN'}
                 </Text>
               </TouchableOpacity>
             </View>

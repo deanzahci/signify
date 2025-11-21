@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../../styles/colors';
 
 const SignUpScreen = ({ navigation }) => {
-  const { signInWithGoogle, signUpWithEmail } = useAuth();
+  const { signUpWithEmail } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -51,16 +51,6 @@ const SignUpScreen = ({ navigation }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleGoogleSignUp = async () => {
-    try {
-      setLoading(true);
-      await signInWithGoogle();
-    } catch (error) {
-      Alert.alert('Sign Up Error', 'Failed to sign up with Google. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleEmailSignUp = async () => {
     if (validateForm()) {
@@ -97,25 +87,6 @@ const SignUpScreen = ({ navigation }) => {
 
             {/* Sign Up Form */}
             <View style={styles.formCard}>
-              {/* Google Sign Up */}
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={handleGoogleSignUp}
-                activeOpacity={0.9}
-                disabled={loading}
-              >
-                <Ionicons name="logo-google" size={20} color={colors.brutalBlack} />
-                <Text style={styles.secondaryButtonText}>
-                  {loading ? 'SIGNING UP...' : 'SIGN UP WITH GOOGLE'}
-                </Text>
-              </TouchableOpacity>
-
-              <View style={styles.dividerContainer}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>OR</Text>
-                <View style={styles.dividerLine} />
-              </View>
-
               {/* Form Fields */}
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Full Name</Text>
@@ -186,8 +157,11 @@ const SignUpScreen = ({ navigation }) => {
                 style={styles.primaryButton}
                 onPress={handleEmailSignUp}
                 activeOpacity={0.9}
+                disabled={loading}
               >
-                <Text style={styles.primaryButtonText}>CREATE ACCOUNT</Text>
+                <Text style={styles.primaryButtonText}>
+                  {loading ? 'CREATING ACCOUNT...' : 'CREATE ACCOUNT'}
+                </Text>
               </TouchableOpacity>
             </View>
 
