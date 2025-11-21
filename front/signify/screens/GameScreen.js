@@ -37,6 +37,8 @@ const GameScreen = () => {
   const [quizRound, setQuizRound] = useState(0);
   const [quizFeedback, setQuizFeedback] = useState('');
   const [usedQuizWords, setUsedQuizWords] = useState([]);
+  const [quizGameActive, setQuizGameActive] = useState(false);
+  const [quizRevealWord, setQuizRevealWord] = useState(false);
   
   // ASL Camera States
   const [cameraReady, setCameraReady] = useState(false);
@@ -80,8 +82,45 @@ const GameScreen = () => {
 
   // ==================== QUIZ MODE FUNCTIONS ====================
   
-  const startQuizMode = async () => {
-    console.log('Starting Quiz Mode...');
+  const startQuizMode = () => {
+    // Just navigate to quiz screen - no camera yet
+    setCurrentScreen('quiz');
+    setQuizScore(0);
+    setQuizRound(0);
+    setUsedQuizWords([]);
+    setCurrentLetterIndex(0);
+    setSignedLetters([]);
+    setCameraReady(false);
+    setQuizGameActive(false);
+    setQuizRevealWord(false);
+    generateQuizQuestion();
+  };
+
+  const generateQuizQuestion = () => {
+    // Filter out already used words
+    const availableWords = WORD_BANK.filter(
+      item => !usedQuizWords.includes(item.word)
+    );
+    
+    if (availableWords.length === 0) {
+      // Game completed - all words used
+      setQuizFeedback('🎉 QUIZ COMPLETED! You finished all questions!');
+      setQuizGameActive(false);
+      return;
+    }
+    
+    const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+    setQuizQuestion(randomWord);
+    setQuizAnswer('');
+    setQuizFeedback('');
+    setCurrentLetterIndex(0);
+    setSignedLetters([]);
+    setQuizRevealWord(false);
+    setUsedQuizWords([...usedQuizWords, randomWord.word]);
+  };
+
+  const startQuizGame = async () => {
+    console.log('Starting Quiz Game - requesting camera...');
     console.log('Permission status:', permission);
     
     // Check if we need to request camera permissions
@@ -103,67 +142,19 @@ const GameScreen = () => {
       if (!result.granted) {
         Alert.alert(
           'Camera Permission Required',
-          'Please enable camera access in your device settings to play Quiz Mode with ASL signing.',
+          'Please enable camera access in your device settings to play Quiz Mode.',
           [{ text: 'OK' }]
         );
         return;
       }
     }
     
-    // Permission granted, start the quiz
-    console.log('Permission granted, initializing quiz...');
-    setCurrentScreen('quiz');
-    setQuizScore(0);
-    setQuizRound(0);
-    setUsedQuizWords([]);
-    setCurrentLetterIndex(0);
-    setSignedLetters([]);
-    setCameraReady(false);
-    generateQuizQuestion();
-  };
-
-  const generateQuizQuestion = () => {
-    // Filter out already used words
-    const availableWords = WORD_BANK.filter(
-      item => !usedQuizWords.includes(item.word)
-    );
-    
-    if (availableWords.length === 0) {
-      // Game completed - all words used
-      setQuizFeedback('🎉 QUIZ COMPLETED! You finished all questions!');
-      return;
-    }
-    
-    const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
-    setQuizQuestion(randomWord);
-    setQuizAnswer('');
+    // Permission granted, start the game
+    console.log('Permission granted, starting quiz game...');
+    setQuizGameActive(true);
     setQuizFeedback('');
     setCurrentLetterIndex(0);
     setSignedLetters([]);
-    setUsedQuizWords([...usedQuizWords, randomWord.word]);
-  };
-
-  const submitQuizAnswer = () => {
-    if (!quizQuestion) return;
-    
-    const userAnswer = quizAnswer.trim().toUpperCase();
-    const correctAnswer = quizQuestion.word;
-    
-    if (userAnswer === correctAnswer) {
-      setQuizScore(quizScore + 10);
-      setQuizFeedback('✅ CORRECT! +10 points');
-      setQuizRound(quizRound + 1);
-      
-      // Generate new question after a short delay
-      setTimeout(() => {
-        generateQuizQuestion();
-      }, 1500);
-    } else {
-      setQuizFeedback(`❌ WRONG! The answer was: ${correctAnswer}`);
-      setTimeout(() => {
-        setQuizFeedback('');
-      }, 2000);
-    }
   };
 
   const exitQuizMode = () => {
@@ -174,19 +165,22 @@ const GameScreen = () => {
     setCurrentLetterIndex(0);
     setSignedLetters([]);
     setCameraReady(false);
+    setQuizGameActive(false);
+    setQuizRevealWord(false);
   };
 
-  const skipQuestion = () => {
+  const skipQuizQuestion = () => {
     setQuizRound(quizRound + 1);
     setQuizFeedback('⏭️ SKIPPED');
+    setQuizGameActive(false);
     setTimeout(() => {
       generateQuizQuestion();
     }, 1000);
   };
 
-  // Simulate sign detection for testing
-  const simulateSignDetection = () => {
-    if (!quizQuestion || isDetecting) return;
+  // Simulate sign detection for Quiz Mode
+  const simulateQuizSignDetection = () => {
+    if (!quizQuestion || isDetecting || !quizGameActive) return;
     
     setIsDetecting(true);
     const currentLetter = quizQuestion.word[currentLetterIndex];
@@ -201,8 +195,9 @@ const GameScreen = () => {
       if (currentLetterIndex + 1 >= quizQuestion.word.length) {
         // Word completed!
         setQuizScore(quizScore + 10);
-        setQuizFeedback('🎉 WORD COMPLETED! +10 points');
+        setQuizFeedback('🎉 CORRECT! +10 points');
         setQuizRound(quizRound + 1);
+        setQuizGameActive(false);
         
         setTimeout(() => {
           generateQuizQuestion();
@@ -219,33 +214,67 @@ const GameScreen = () => {
     }, 500);
   };
 
-  const onCameraReady = () => {
-    console.log('Camera is ready!');
-    setCameraReady(true);
-  };
-
   // ==================== TYPING SPEED RUN FUNCTIONS ====================
   
   const startTypingMode = () => {
+    // Just navigate to typing screen - no camera yet
     setCurrentScreen('typing');
     setTypingScore(0);
     setCurrentWordIndex(0);
-    setTypingInput('');
-    setTypingWPM(0);
-    setTypingTimer(30);
+    setCurrentLetterIndex(0);
+    setSignedLetters([]);
+    setCameraReady(false);
     setTypingGameActive(false);
+    setTypingTimer(30);
     
     // Generate random word sequence
     const shuffled = [...WORD_BANK].sort(() => Math.random() - 0.5);
-    setTypingWords(shuffled.slice(0, 20).map(item => item.word));
+    setTypingWords(shuffled.slice(0, 20));
+    
+    // Set first word as current question
+    if (shuffled.length > 0) {
+      setQuizQuestion(shuffled[0]);
+    }
   };
 
-  const startTypingGame = () => {
+  const startTypingGame = async () => {
+    console.log('Starting Typing Game - requesting camera...');
+    console.log('Permission status:', permission);
+    
+    // Check if we need to request camera permissions
+    if (!permission) {
+      Alert.alert(
+        'Error',
+        'Camera permissions are not initialized.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
+    // If permission not granted, request it
+    if (!permission.granted) {
+      console.log('Requesting camera permission...');
+      const result = await requestPermission();
+      console.log('Permission result:', result);
+      
+      if (!result.granted) {
+        Alert.alert(
+          'Camera Permission Required',
+          'Please enable camera access in your device settings to play SignSpeed.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+    }
+    
+    // Permission granted, start the game
+    console.log('Permission granted, starting typing game...');
     setTypingGameActive(true);
     setTypingStartTime(Date.now());
-    setTypingTimer(30);
+    setQuizFeedback('');
   };
 
+  // Timer countdown
   useEffect(() => {
     if (typingGameActive && typingTimer > 0) {
       const interval = setInterval(() => {
@@ -262,36 +291,76 @@ const GameScreen = () => {
     }
   }, [typingGameActive, typingTimer]);
 
-  const handleTypingInput = (text) => {
-    setTypingInput(text);
-    
-    if (!typingGameActive) return;
-    
-    const currentWord = typingWords[currentWordIndex];
-    
-    // Check if word is complete and correct
-    if (text.toUpperCase() === currentWord) {
-      setTypingScore(typingScore + 1);
-      setTypingInput('');
-      
-      // Calculate WPM
-      const timeElapsed = (Date.now() - typingStartTime) / 1000 / 60; // in minutes
-      const wpm = Math.round((typingScore + 1) / timeElapsed);
-      setTypingWPM(wpm);
-      
-      // Move to next word
-      if (currentWordIndex < typingWords.length - 1) {
-        setCurrentWordIndex(currentWordIndex + 1);
-      } else {
-        // Finished all words
-        setTypingGameActive(false);
-      }
-    }
-  };
-
   const exitTypingMode = () => {
     setCurrentScreen('menu');
     setTypingGameActive(false);
+    setQuizQuestion(null);
+    setCurrentLetterIndex(0);
+    setSignedLetters([]);
+    setCameraReady(false);
+  };
+
+  const skipWord = () => {
+    if (currentWordIndex < typingWords.length - 1) {
+      setCurrentWordIndex(currentWordIndex + 1);
+      setCurrentLetterIndex(0);
+      setSignedLetters([]);
+      setQuizQuestion(typingWords[currentWordIndex + 1]);
+      setQuizFeedback('⏭️ SKIPPED');
+      setTimeout(() => {
+        setQuizFeedback('');
+      }, 1000);
+    }
+  };
+
+  // Simulate sign detection for SignSpeed mode
+  const simulateSignDetection = () => {
+    if (!quizQuestion || isDetecting || !typingGameActive) return;
+    
+    setIsDetecting(true);
+    const currentLetter = quizQuestion.word[currentLetterIndex];
+    
+    // Simulate detection delay (500ms)
+    setTimeout(() => {
+      const newSignedLetters = [...signedLetters, currentLetter];
+      setSignedLetters(newSignedLetters);
+      setQuizFeedback(`✅ Detected: ${currentLetter}`);
+      
+      // Check if word is complete
+      if (currentLetterIndex + 1 >= quizQuestion.word.length) {
+        // Word completed!
+        setTypingScore(typingScore + 1);
+        setQuizFeedback('🎉 WORD COMPLETED! +1 point');
+        
+        setTimeout(() => {
+          // Move to next word
+          if (currentWordIndex < typingWords.length - 1) {
+            setCurrentWordIndex(currentWordIndex + 1);
+            setCurrentLetterIndex(0);
+            setSignedLetters([]);
+            setQuizQuestion(typingWords[currentWordIndex + 1]);
+            setQuizFeedback('');
+          } else {
+            // Finished all words
+            setTypingGameActive(false);
+            setQuizFeedback('🎉 ALL WORDS COMPLETED!');
+          }
+        }, 1500);
+      } else {
+        // Move to next letter
+        setCurrentLetterIndex(currentLetterIndex + 1);
+        setTimeout(() => {
+          setQuizFeedback('');
+        }, 1000);
+      }
+      
+      setIsDetecting(false);
+    }, 500);
+  };
+
+  const onCameraReady = () => {
+    console.log('Camera is ready!');
+    setCameraReady(true);
   };
 
   // ==================== RENDER FUNCTIONS ====================
@@ -317,14 +386,11 @@ const GameScreen = () => {
         </View>
         <Text style={styles.modeTitle}>QUIZ MODE</Text>
         <Text style={styles.modeDescription}>
-          Test your knowledge! Get hints about words, see the letter count, and spell the answer correctly.
+          Guess the word from a hint! Sign using ASL to spell your answer letter by letter.
         </Text>
-        <View style={styles.modeBadge}>
-          <Text style={styles.modeBadgeText}>EDUCATIONAL</Text>
-        </View>
       </TouchableOpacity>
 
-      {/* Typing Speed Run Card */}
+      {/* SignSpeed Card */}
       <TouchableOpacity
         style={[styles.modeCard, { backgroundColor: colors.brutalGreen }]}
         activeOpacity={0.9}
@@ -333,13 +399,10 @@ const GameScreen = () => {
         <View style={styles.modeIcon}>
           <Text style={styles.modeIconText}>⚡</Text>
         </View>
-        <Text style={styles.modeTitle}>TYPING SPEED RUN</Text>
+        <Text style={styles.modeTitle}>SIGNSPEED</Text>
         <Text style={styles.modeDescription}>
-          Type as fast as you can! Words appear one by one. Race against the clock to maximize your WPM.
+          Race against time! Sign words as fast as you can. Beat the 30-second timer and maximize your score.
         </Text>
-        <View style={styles.modeBadge}>
-          <Text style={styles.modeBadgeText}>FAST-PACED</Text>
-        </View>
       </TouchableOpacity>
 
       {/* Stats Card */}
@@ -362,6 +425,62 @@ const GameScreen = () => {
   );
 
   const renderQuizMode = () => {
+    if (!quizQuestion) {
+      return (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading quiz...</Text>
+        </View>
+      );
+    }
+
+    // Show intro screen without camera if game hasn't started
+    if (!quizGameActive) {
+      return (
+        <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.gameHeader}>
+            <TouchableOpacity style={styles.backButton} onPress={exitQuizMode}>
+              <Text style={styles.backButtonText}>← BACK</Text>
+            </TouchableOpacity>
+            <View style={styles.scoreContainer}>
+              <Text style={styles.scoreLabel}>SCORE</Text>
+              <Text style={styles.scoreValue}>{quizScore}</Text>
+            </View>
+          </View>
+
+          <Text style={styles.gameTitle}>QUIZ MODE</Text>
+          <Text style={styles.gameSubtitle}>Round {quizRound + 1}</Text>
+
+          {/* Mode Description Card */}
+          <View style={[styles.quizCard, { backgroundColor: colors.brutalBlue, marginBottom: 20 }]}>
+            <Text style={[styles.quizCardLabel, { color: colors.brutalWhite }]}>❓ ABOUT QUIZ MODE</Text>
+            <Text style={[styles.instructionText, { color: colors.brutalWhite, marginTop: 8 }]}>
+              • Read the hint below{'\n'}
+              • Guess the word{'\n'}
+              • Use ASL to sign each letter{'\n'}
+              • The word reveals as you sign!
+            </Text>
+          </View>
+
+          {/* Hint Card */}
+          <View style={[styles.quizCard, { backgroundColor: colors.brutalYellow, marginBottom: 20 }]}>
+            <Text style={styles.quizCardLabel}>💡 YOUR HINT</Text>
+            <Text style={styles.quizHint}>{quizQuestion.hint}</Text>
+          </View>
+
+          {/* Start Button */}
+          <TouchableOpacity
+            style={[styles.submitButton, { backgroundColor: colors.brutalBlue }]}
+            onPress={startQuizGame}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.submitButtonText}>START</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      );
+    }
+
+    // Game is active - show camera view
     if (!permission) {
       return (
         <View style={styles.loadingContainer}>
@@ -402,14 +521,6 @@ const GameScreen = () => {
       );
     }
 
-    if (!quizQuestion) {
-      return (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading question...</Text>
-        </View>
-      );
-    }
-
     return (
       <View style={styles.quizFullScreen}>
         {/* Camera View at Top (60% of screen) */}
@@ -435,7 +546,7 @@ const GameScreen = () => {
                 <Text style={styles.topRoundLabel}>Round {quizRound + 1}</Text>
               </View>
               
-              <TouchableOpacity style={styles.topButton} onPress={skipQuestion}>
+              <TouchableOpacity style={styles.topButton} onPress={skipQuizQuestion}>
                 <Text style={styles.topButtonText}>SKIP →</Text>
               </TouchableOpacity>
             </View>
@@ -472,19 +583,238 @@ const GameScreen = () => {
 
         {/* Bottom Content Area (40% of screen) */}
         <View style={styles.bottomContentArea}>
-          {/* Current Letter to Sign - Large Display */}
+          {/* Hint Card - Always Visible */}
+          <View style={[styles.quizCard, { backgroundColor: colors.brutalYellow, marginBottom: 8, paddingVertical: 12 }]}>
+            <Text style={styles.quizCardLabel}>💡 HINT</Text>
+            <Text style={styles.quizHint}>{quizQuestion.hint}</Text>
+          </View>
+
+          {/* Word Progress - Show only guessed letters, rest are hidden */}
+          <View style={styles.wordProgressContainerBottom}>
+            <Text style={[styles.wordProgressLabelBottom, { fontSize: 14, marginBottom: 8 }]}>WORD PROGRESS:</Text>
+            <View style={styles.wordDisplay}>
+              {quizQuestion.word.split('').map((letter, idx) => (
+                <View
+                  key={idx}
+                  style={[
+                    styles.letterDisplayBox,
+                    idx < currentLetterIndex && styles.letterDisplayBoxCompleted,
+                    idx === currentLetterIndex && styles.letterDisplayBoxCurrent,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.letterDisplayText,
+                      idx < currentLetterIndex && styles.letterDisplayTextCompleted,
+                      idx === currentLetterIndex && styles.letterDisplayTextCurrent,
+                    ]}
+                  >
+                    {idx < currentLetterIndex ? letter : '_'}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Current Letter to Sign - Compact Version */}
           {currentLetterIndex < quizQuestion.word.length && (
-            <View style={styles.currentSignPromptBottom}>
-              <Text style={styles.currentSignLabelBottom}>SIGN THIS LETTER:</Text>
-              <Text style={styles.currentSignLetterBottom}>
-                {quizQuestion.word[currentLetterIndex]}
+            <View style={[styles.currentSignPromptBottom, { paddingVertical: 8, marginVertical: 8 }]}>
+              <Text style={[styles.currentSignLabelBottom, { fontSize: 14, marginBottom: 4 }]}>
+                {currentLetterIndex === 0 ? 'SIGN THE FIRST LETTER' : 'NEXT LETTER'}
               </Text>
+              <Text style={[styles.currentSignLetterBottom, { fontSize: 32 }]}>?</Text>
             </View>
           )}
 
-          {/* Word Progress Display */}
+          {/* Test Button */}
+          <TouchableOpacity
+            style={[
+              styles.detectButtonBottom,
+              isDetecting && styles.detectButtonDisabled,
+            ]}
+            onPress={simulateQuizSignDetection}
+            disabled={isDetecting}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.detectButtonText}>
+              {isDetecting ? 'DETECTING...' : '🤚 TEST: DETECT SIGN'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  const renderTypingMode = () => {
+    if (!quizQuestion) {
+      return (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading words...</Text>
+        </View>
+      );
+    }
+
+    // Show intro screen without camera if game hasn't started
+    if (!typingGameActive) {
+      return (
+        <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.gameHeader}>
+            <TouchableOpacity style={styles.backButton} onPress={exitTypingMode}>
+              <Text style={styles.backButtonText}>← BACK</Text>
+            </TouchableOpacity>
+            <View style={styles.scoreContainer}>
+              <Text style={styles.scoreLabel}>SCORE</Text>
+              <Text style={styles.scoreValue}>{typingScore}</Text>
+            </View>
+          </View>
+
+          <Text style={styles.gameTitle}>SIGNSPEED</Text>
+          <Text style={styles.gameSubtitle}>Word {currentWordIndex + 1}/{typingWords.length}</Text>
+
+          {/* Mode Description Card */}
+          <View style={[styles.quizCard, { backgroundColor: colors.brutalGreen, marginBottom: 20 }]}>
+            <Text style={[styles.quizCardLabel, { color: colors.brutalWhite }]}>⚡ ABOUT SIGNSPEED</Text>
+            <Text style={[styles.instructionText, { color: colors.brutalWhite, marginTop: 8 }]}>
+              • Race against the 30-second timer{'\n'}
+              • Sign each word letter by letter{'\n'}
+              • Letters and words are shown{'\n'}
+              • Complete as many words as you can!
+            </Text>
+          </View>
+
+          {/* Timer Info Card */}
+          <View style={[styles.quizCard, { backgroundColor: colors.brutalYellow, marginBottom: 20 }]}>
+            <Text style={styles.quizCardLabel}>⏱️ TIMER</Text>
+            <Text style={[styles.quizLetterCount, { fontSize: 48 }]}>30 seconds</Text>
+          </View>
+
+          {/* Start Button */}
+          <TouchableOpacity
+            style={[styles.submitButton, { backgroundColor: colors.brutalGreen }]}
+            onPress={startTypingGame}
+            activeOpacity={0.9}
+          >
+            <Text style={styles.submitButtonText}>START</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      );
+    }
+
+    // Game is active - show camera view
+    if (!permission) {
+      return (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Initializing camera...</Text>
+        </View>
+      );
+    }
+
+    if (!permission.granted) {
+      return (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Camera permission is required</Text>
+          <Text style={styles.loadingSubtext}>
+            Please grant camera access to use SignSpeed
+          </Text>
+          <TouchableOpacity 
+            style={[styles.submitButton, { marginTop: 20 }]} 
+            onPress={async () => {
+              const result = await requestPermission();
+              if (!result.granted) {
+                Alert.alert(
+                  'Permission Denied',
+                  'Camera access is required for SignSpeed. Please enable it in your device settings.',
+                  [{ text: 'OK' }]
+                );
+              }
+            }}
+          >
+            <Text style={styles.submitButtonText}>REQUEST PERMISSION</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.submitButton, { backgroundColor: colors.brutalWhite, marginTop: 12 }]} 
+            onPress={exitTypingMode}
+          >
+            <Text style={[styles.submitButtonText, { color: colors.brutalBlack }]}>GO BACK</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.quizFullScreen}>
+        {/* Camera View at Top (60% of screen) */}
+        <View style={styles.cameraContainer}>
+          <CameraView
+            ref={cameraRef}
+            style={styles.camera}
+            facing="front"
+            onCameraReady={onCameraReady}
+            onMountError={(error) => {
+              console.error('Camera mount error:', error);
+              Alert.alert('Camera Error', `Failed to start camera: ${error.message}`);
+            }}
+          >
+            {/* Top Bar Overlay on Camera */}
+            <View style={styles.topBar}>
+              <TouchableOpacity style={styles.topButton} onPress={exitTypingMode}>
+                <Text style={styles.topButtonText}>← BACK</Text>
+              </TouchableOpacity>
+              
+              <View style={styles.topCenter}>
+                <Text style={styles.topScoreLabel}>⏱️ {typingTimer}s</Text>
+                <Text style={styles.topRoundLabel}>Word {currentWordIndex + 1}/{typingWords.length}</Text>
+              </View>
+              
+              <TouchableOpacity style={styles.topButton} onPress={skipWord}>
+                <Text style={styles.topButtonText}>SKIP →</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Camera Ready Indicator */}
+            {!cameraReady && (
+              <View style={styles.cameraLoadingOverlay}>
+                <Text style={styles.cameraLoadingText}>📷 Starting camera...</Text>
+              </View>
+            )}
+
+            {/* Feedback Message Overlay on Camera */}
+            {quizFeedback && (
+              <View style={styles.feedbackOverlayCenter}>
+                <View
+                  style={[
+                    styles.feedbackCard,
+                    {
+                      backgroundColor:
+                        quizFeedback.includes('✅') || quizFeedback.includes('🎉')
+                          ? colors.brutalGreen
+                          : quizFeedback.includes('⏭️')
+                          ? colors.brutalYellow
+                          : colors.brutalRed,
+                    },
+                  ]}
+                >
+                  <Text style={styles.feedbackOverlayText}>{quizFeedback}</Text>
+                </View>
+              </View>
+            )}
+          </CameraView>
+        </View>
+
+        {/* Bottom Content Area (40% of screen) */}
+        <View style={styles.bottomContentArea}>
+          {/* Timer Display */}
+          <View style={[styles.quizCard, { backgroundColor: typingTimer > 10 ? colors.brutalGreen : colors.brutalRed, marginBottom: 12 }]}>
+            <Text style={[styles.quizCardLabel, { color: colors.brutalWhite }]}>⏱️ TIME REMAINING</Text>
+            <Text style={[styles.quizLetterCount, { color: colors.brutalWhite, fontSize: 48 }]}>
+              {typingTimer}s
+            </Text>
+          </View>
+
+          {/* Current Word Display - Large */}
           <View style={styles.wordProgressContainerBottom}>
-            <Text style={styles.wordProgressLabelBottom}>WORD PROGRESS:</Text>
+            <Text style={styles.wordProgressLabelBottom}>CURRENT WORD:</Text>
             <View style={styles.wordDisplay}>
               {quizQuestion.word.split('').map((letter, idx) => (
                 <View
@@ -509,6 +839,16 @@ const GameScreen = () => {
             </View>
           </View>
 
+          {/* Current Letter to Sign - Large Display */}
+          {currentLetterIndex < quizQuestion.word.length && (
+            <View style={styles.currentSignPromptBottom}>
+              <Text style={styles.currentSignLabelBottom}>SIGN THIS LETTER:</Text>
+              <Text style={styles.currentSignLetterBottom}>
+                {quizQuestion.word[currentLetterIndex]}
+              </Text>
+            </View>
+          )}
+
           {/* Test Button */}
           <TouchableOpacity
             style={[
@@ -527,119 +867,6 @@ const GameScreen = () => {
       </View>
     );
   };
-
-  const renderTypingMode = () => (
-    <View style={styles.typingContainer}>
-      {/* Typing Header */}
-      <View style={styles.gameHeader}>
-        <TouchableOpacity style={styles.backButton} onPress={exitTypingMode}>
-          <Text style={styles.backButtonText}>← BACK</Text>
-        </TouchableOpacity>
-        <View style={styles.scoreContainer}>
-          <Text style={styles.scoreLabel}>WPM</Text>
-          <Text style={styles.scoreValue}>{typingWPM}</Text>
-        </View>
-      </View>
-
-      <Text style={styles.gameTitle}>TYPING SPEED RUN</Text>
-
-      {/* Timer and Score Row */}
-      <View style={styles.typingStatsRow}>
-        <View style={[styles.statBadge, { backgroundColor: colors.brutalYellow }]}>
-          <Text style={styles.statBadgeLabel}>TIME</Text>
-          <Text style={styles.statBadgeValue}>{typingTimer}s</Text>
-        </View>
-        <View style={[styles.statBadge, { backgroundColor: colors.brutalGreen }]}>
-          <Text style={styles.statBadgeLabel}>WORDS</Text>
-          <Text style={styles.statBadgeValue}>{typingScore}/{typingWords.length}</Text>
-        </View>
-      </View>
-
-      {!typingGameActive && typingScore === 0 && (
-        <View style={styles.typingInstructions}>
-          <Text style={styles.instructionTitle}>HOW TO PLAY</Text>
-          <Text style={styles.instructionText}>
-            • Type the word shown as fast as you can{'\n'}
-            • Press space or enter to submit{'\n'}
-            • You have 30 seconds{'\n'}
-            • Maximize your WPM!
-          </Text>
-          <TouchableOpacity
-            style={[styles.submitButton, { backgroundColor: colors.brutalGreen }]}
-            onPress={startTypingGame}
-            activeOpacity={0.9}
-          >
-            <Text style={styles.submitButtonText}>START TYPING</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {typingWords.length > 0 && (typingGameActive || typingScore > 0) && (
-        <View style={styles.typingPlayArea}>
-          {/* Current Word Display */}
-          <Animated.View
-            style={[
-              styles.currentWordCard,
-              { transform: [{ scale: typingGameActive ? pulseAnim : 1 }] }
-            ]}
-          >
-            <Text style={styles.currentWordLabel}>TYPE THIS WORD:</Text>
-            <Text style={styles.currentWord}>
-              {typingWords[currentWordIndex] || 'FINISHED!'}
-            </Text>
-          </Animated.View>
-
-          {/* Typing Input */}
-          {typingGameActive ? (
-            <View style={styles.typingInputSection}>
-              <TextInput
-                style={styles.typingInput}
-                value={typingInput}
-                onChangeText={handleTypingInput}
-                autoCapitalize="characters"
-                autoCorrect={false}
-                autoFocus={true}
-                placeholder="Start typing..."
-                placeholderTextColor="#999"
-              />
-            </View>
-          ) : (
-            <View style={styles.gameOverCard}>
-              <Text style={styles.gameOverTitle}>
-                {typingTimer === 0 ? '⏰ TIME\'S UP!' : '🎉 COMPLETED!'}
-              </Text>
-              <Text style={styles.gameOverScore}>
-                Final Score: {typingScore} words
-              </Text>
-              <Text style={styles.gameOverWPM}>
-                {typingWPM} WPM
-              </Text>
-              <TouchableOpacity
-                style={[styles.submitButton, { marginTop: 20 }]}
-                onPress={startTypingMode}
-                activeOpacity={0.9}
-              >
-                <Text style={styles.submitButtonText}>PLAY AGAIN</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          {/* Progress Indicator */}
-          <View style={styles.progressBar}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  width: `${(currentWordIndex / typingWords.length) * 100}%`,
-                  backgroundColor: colors.brutalBlue,
-                }
-              ]}
-            />
-          </View>
-        </View>
-      )}
-    </View>
-  );
 
   // ==================== MAIN RENDER ====================
 
@@ -1201,31 +1428,32 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brutalPurple,
     borderWidth: 4,
     borderColor: colors.brutalBlack,
-    paddingVertical: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
     shadowColor: colors.brutalBlack,
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 0,
   },
   currentSignLabelBottom: {
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: 'bold',
     color: colors.brutalWhite,
-    marginBottom: 8,
-    letterSpacing: 2,
+    marginBottom: 4,
+    letterSpacing: 1,
   },
   currentSignLetterBottom: {
-    fontSize: 64,
+    fontSize: 36,
     fontWeight: 'bold',
     color: colors.brutalWhite,
-    letterSpacing: 4,
+    letterSpacing: 2,
   },
   
   // Word Progress - Bottom
   wordProgressContainerBottom: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   wordProgressLabelBottom: {
     fontSize: 12,
