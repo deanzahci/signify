@@ -5,16 +5,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  TouchableOpacity,
+  TextInput,
+  StyleSheet,
+  ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../../context/AuthContext';
-import NBContainer from '../../components/neobrutalist/NBContainer';
-import NBButton from '../../components/neobrutalist/NBButton';
-import NBInput from '../../components/neobrutalist/NBInput';
-import NBCard from '../../components/neobrutalist/NBCard';
 import { Ionicons } from '@expo/vector-icons';
+import { colors } from '../../styles/colors';
 
 const SignUpScreen = ({ navigation }) => {
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, signUpWithEmail } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -60,134 +62,325 @@ const SignUpScreen = ({ navigation }) => {
     }
   };
 
-  const handleEmailSignUp = () => {
+  const handleEmailSignUp = async () => {
     if (validateForm()) {
-      // Placeholder for email sign-up
-      Alert.alert('Coming Soon', 'Email sign-up will be available soon!');
+      setLoading(true);
+      const result = await signUpWithEmail(email, password, name);
+      setLoading(false);
+
+      if (result.success) {
+        Alert.alert('Success', 'Account created successfully! You are now signed in.');
+      } else {
+        Alert.alert('Sign Up Failed', result.error);
+      }
     }
   };
 
   return (
-    <NBContainer safe scroll>
+    <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
+        style={styles.keyboardView}
       >
-        <View className="flex-1 px-6 py-8">
-          {/* Header */}
-          <View className="items-center mb-8">
-            <View className="bg-brutal-yellow w-20 h-20 border-brutal border-brutal-black shadow-brutal-lg items-center justify-center mb-4">
-              <Ionicons name="person-add" size={32} color="#000000" />
-            </View>
-            <Text className="font-bold text-3xl text-brutal-black">CREATE ACCOUNT</Text>
-            <Text className="font-mono text-sm text-brutal-black mt-2">
-              Join the brutal revolution
-            </Text>
-          </View>
-
-          {/* Sign Up Form */}
-          <NBCard padding="large" className="mb-6">
-            {/* Google Sign Up */}
-            <NBButton
-              title="SIGN UP WITH GOOGLE"
-              onPress={handleGoogleSignUp}
-              variant="secondary"
-              size="full"
-              loading={loading}
-              className="mb-4"
-              icon={
-                <Ionicons name="logo-google" size={20} color="#000000" />
-              }
-            />
-
-            <View className="flex-row items-center mb-4">
-              <View className="flex-1 h-0.5 bg-brutal-black" />
-              <Text className="mx-4 font-mono text-sm text-brutal-black">OR</Text>
-              <View className="flex-1 h-0.5 bg-brutal-black" />
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.content}>
+            {/* Header */}
+            <View style={styles.header}>
+              <View style={styles.iconBox}>
+                <Ionicons name="person-add" size={32} color={colors.brutalBlack} />
+              </View>
+              <Text style={styles.title}>CREATE ACCOUNT</Text>
+              <Text style={styles.subtitle}>
+                Join the brutal revolution
+              </Text>
             </View>
 
-            {/* Form Fields */}
-            <NBInput
-              label="Full Name"
-              placeholder="John Doe"
-              value={name}
-              onChangeText={(text) => {
-                setName(text);
-                if (errors.name) {
-                  setErrors({ ...errors, name: '' });
-                }
-              }}
-              error={errors.name}
-              autoCapitalize="words"
-            />
+            {/* Sign Up Form */}
+            <View style={styles.formCard}>
+              {/* Google Sign Up */}
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={handleGoogleSignUp}
+                activeOpacity={0.9}
+                disabled={loading}
+              >
+                <Ionicons name="logo-google" size={20} color={colors.brutalBlack} />
+                <Text style={styles.secondaryButtonText}>
+                  {loading ? 'SIGNING UP...' : 'SIGN UP WITH GOOGLE'}
+                </Text>
+              </TouchableOpacity>
 
-            <NBInput
-              label="Email"
-              placeholder="your@email.com"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                if (errors.email) {
-                  setErrors({ ...errors, email: '' });
-                }
-              }}
-              error={errors.email}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+              <View style={styles.dividerContainer}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>OR</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
-            <NBInput
-              label="Password"
-              placeholder="Min. 8 characters"
-              value={password}
-              onChangeText={(text) => {
-                setPassword(text);
-                if (errors.password) {
-                  setErrors({ ...errors, password: '' });
-                }
-              }}
-              error={errors.password}
-              secureTextEntry
-            />
+              {/* Form Fields */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Full Name</Text>
+                <TextInput
+                  style={[styles.input, errors.name && styles.inputError]}
+                  placeholder="John Doe"
+                  value={name}
+                  onChangeText={(text) => {
+                    setName(text);
+                    if (errors.name) setErrors({ ...errors, name: '' });
+                  }}
+                  autoCapitalize="words"
+                  placeholderTextColor="#999"
+                />
+                {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+              </View>
 
-            <NBInput
-              label="Confirm Password"
-              placeholder="Re-enter password"
-              value={confirmPassword}
-              onChangeText={(text) => {
-                setConfirmPassword(text);
-                if (errors.confirmPassword) {
-                  setErrors({ ...errors, confirmPassword: '' });
-                }
-              }}
-              error={errors.confirmPassword}
-              secureTextEntry
-            />
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Email</Text>
+                <TextInput
+                  style={[styles.input, errors.email && styles.inputError]}
+                  placeholder="your@email.com"
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    if (errors.email) setErrors({ ...errors, email: '' });
+                  }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  placeholderTextColor="#999"
+                />
+                {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+              </View>
 
-            <NBButton
-              title="CREATE ACCOUNT"
-              onPress={handleEmailSignUp}
-              variant="primary"
-              size="full"
-            />
-          </NBCard>
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Password</Text>
+                <TextInput
+                  style={[styles.input, errors.password && styles.inputError]}
+                  placeholder="Min. 8 characters"
+                  value={password}
+                  onChangeText={(text) => {
+                    setPassword(text);
+                    if (errors.password) setErrors({ ...errors, password: '' });
+                  }}
+                  secureTextEntry
+                  placeholderTextColor="#999"
+                />
+                {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+              </View>
 
-          {/* Footer */}
-          <View className="items-center mb-8">
-            <Text className="font-mono text-sm text-brutal-black mb-4">
-              Already have an account?
-            </Text>
-            <NBButton
-              title="SIGN IN"
-              onPress={() => navigation.navigate('SignIn')}
-              variant="secondary"
-              size="medium"
-            />
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Confirm Password</Text>
+                <TextInput
+                  style={[styles.input, errors.confirmPassword && styles.inputError]}
+                  placeholder="Re-enter password"
+                  value={confirmPassword}
+                  onChangeText={(text) => {
+                    setConfirmPassword(text);
+                    if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: '' });
+                  }}
+                  secureTextEntry
+                  placeholderTextColor="#999"
+                />
+                {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+              </View>
+
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={handleEmailSignUp}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.primaryButtonText}>CREATE ACCOUNT</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Footer */}
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>
+                Already have an account?
+              </Text>
+              <TouchableOpacity
+                style={styles.signInButton}
+                onPress={() => navigation.navigate('SignIn')}
+                activeOpacity={0.9}
+              >
+                <Text style={styles.signInButtonText}>SIGN IN</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
-    </NBContainer>
+    </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.brutalWhite,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  iconBox: {
+    width: 80,
+    height: 80,
+    backgroundColor: colors.brutalYellow,
+    borderWidth: 3,
+    borderColor: colors.brutalBlack,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: colors.brutalBlack,
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 6,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: colors.brutalBlack,
+  },
+  subtitle: {
+    fontSize: 14,
+    fontFamily: 'monospace',
+    color: colors.brutalBlack,
+    marginTop: 8,
+  },
+  formCard: {
+    backgroundColor: colors.brutalWhite,
+    borderWidth: 3,
+    borderColor: colors.brutalBlack,
+    padding: 24,
+    marginBottom: 24,
+    shadowColor: colors.brutalBlack,
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.brutalBlack,
+    marginBottom: 8,
+  },
+  input: {
+    borderWidth: 3,
+    borderColor: colors.brutalBlack,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    fontFamily: 'monospace',
+    backgroundColor: colors.brutalWhite,
+    shadowColor: colors.brutalBlack,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 2,
+  },
+  inputError: {
+    borderColor: colors.brutalRed,
+  },
+  errorText: {
+    color: colors.brutalRed,
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginTop: 4,
+  },
+  primaryButton: {
+    backgroundColor: colors.brutalBlue,
+    borderWidth: 3,
+    borderColor: colors.brutalBlack,
+    paddingVertical: 12,
+    alignItems: 'center',
+    shadowColor: colors.brutalBlack,
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
+  },
+  primaryButtonText: {
+    color: colors.brutalWhite,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  secondaryButton: {
+    backgroundColor: colors.brutalWhite,
+    borderWidth: 3,
+    borderColor: colors.brutalBlack,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    shadowColor: colors.brutalBlack,
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
+  },
+  secondaryButtonText: {
+    color: colors.brutalBlack,
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.brutalBlack,
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 12,
+    fontFamily: 'monospace',
+    color: colors.brutalBlack,
+  },
+  footer: {
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 14,
+    fontFamily: 'monospace',
+    color: colors.brutalBlack,
+    marginBottom: 16,
+  },
+  signInButton: {
+    backgroundColor: colors.brutalWhite,
+    borderWidth: 3,
+    borderColor: colors.brutalBlack,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    shadowColor: colors.brutalBlack,
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
+  },
+  signInButtonText: {
+    color: colors.brutalBlack,
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+});
 
 export default SignUpScreen;
