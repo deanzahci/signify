@@ -39,29 +39,54 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--splits", type=float, nargs=3, default=DEFAULT_SPLITS, help="Train/val/test ratios (must sum to <=1).")
     parser.add_argument("--seed", type=int, default=42, help="Random seed for shuffling.")
     parser.add_argument("--max-samples", type=int, help="Limit total records for debugging.")
+    parser.add_argument("--static", action="store_true", help="Process static images (single frame) instead of video sequences.")
+    parser.add_argument("--prefix", type=str, default="", help="Prefix for output dataset filenames (e.g., 'kaggle_alphabet_').")
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging.")
     return parser.parse_args()
 
 
-def load_manifest(path: Path) -> List[LandmarkRecord]:
+def load_manifest(path: Path, static: bool = False) -> List[LandmarkRecord]:
     if not path.exists():
         raise FileNotFoundError(f"Landmark manifest not found: {path}")
     with path.open() as fh:
         payload = json.load(fh)
-    return [
-        LandmarkRecord(
-            label=str(record["label"]),
-            clip_id=f"{record['youtube_id']}_{record['start']}_{record['end']}",
-            landmarks_path=Path(record["landmarks_path"]),
-            metadata=record.get("metadata", {}),
-        )
-        for record in payload
-    ]
+    
+    if static:
+        # Kaggle alphabet manifest: {label, image_path, landmark_path}
+        return [
+            LandmarkRecord(
+                label=str(record["label"]),
+                clip_id=Path(record["image_path"]).stem,
+                landmarks_path=Path(record["landmark_path"]),
+                metadata={},
+            )
+            for record in payload
+        ]
+    else:
+        # MS-ASL video manifest: {label, youtube_id, start, end, landmarks_path}
+        return [
+            LandmarkRecord(
+                label=str(record["label"]),
+                clip_id=f"{record['youtube_id']}_{record['start']}_{record['end']}",
+                landmarks_path=Path(record["landmarks_path"]),
+                metadata=record.get("metadata", {}),
+            )
+            for record in payload
+        ]
 
 
-def load_sequence(path: Path) -> Dict[str, np.ndarray]:
-    data = np.load(path)
-    return {"landmarks": data["landmarks"], "mask": data["mask"]}
+def load_sequence(path: Path, static: bool = False) -> Dict[str, np.ndarray]:
+    if static:
+        # Load .npy file for static images (shape: [21, 3])
+        landmarks = np.load(path)
+        # Add temporal dimension for consistency: [1, 21, 3]
+        landmarks = np.expand_dims(landmarks, axis=0)
+        mask = np.ones(1, dtype=np.float32)
+        return {"landmarks": landmarks, "mask": mask}
+    else:
+        # Load .npz file for video sequences (shape: [T, 21, 3])
+        data = np.load(path)
+        return {"landmarks": data["landmarks"], "mask": data["mask"]}
 
 
 def split_records(records: List[LandmarkRecord], ratios: Iterable[float]) -> Dict[str, List[LandmarkRecord]]:
@@ -77,13 +102,13 @@ def split_records(records: List[LandmarkRecord], ratios: Iterable[float]) -> Dic
     }
 
 
-def assemble_split(entries: List[LandmarkRecord], label_map: Dict[str, int]) -> Dict[str, np.ndarray]:
+def assemble_split(entries: List[LandmarkRecord], label_map: Dict[str, int], static: bool = False) -> Dict[str, np.ndarray]:
     sequences = []
     masks = []
     labels = []
     clip_ids = []
     for entry in entries:
-        data = load_sequence(entry.landmarks_path)
+        data = load_sequence(entry.landmarks_path, static=static)
         sequences.append(data["landmarks"])
         masks.append(data["mask"])
         labels.append(label_map[entry.label])
@@ -115,21 +140,28 @@ def write_split(split_data: Dict[str, np.ndarray], path: Path, label_map: Dict[s
 def main() -> None:
     args = parse_arguments()
     configure_logging(args.verbose)
-    records = load_manifest(args.manifest)
+    random.seed(args.seed)
+    
+    records = load_manifest(args.manifest, static=args.static)
     if args.max_samples:
         records = records[: args.max_samples]
     if not records:
         raise ValueError("No landmark records available to build datasets.")
+    
     labels = sorted({record.label for record in records})
     label_map = {label: idx for idx, label in enumerate(labels)}
     splits = split_records(records, args.splits)
-    logging.info("Building dataset splits with ratios %s", args.splits)
+    
+    mode = "static" if args.static else "video"
+    logging.info("Building %s dataset splits with ratios %s", mode, args.splits)
+    
     for split_name, entries in splits.items():
-        split_data = assemble_split(entries, label_map)
+        split_data = assemble_split(entries, label_map, static=args.static)
         if not split_data:
             logging.warning("Skipping empty split %s", split_name)
             continue
-        target = args.dataset_dir / f"{split_name}.npz"
+        filename = f"{args.prefix}{split_name}.npz" if args.prefix else f"{split_name}.npz"
+        target = args.dataset_dir / filename
         write_split(split_data, target, label_map)
 
 

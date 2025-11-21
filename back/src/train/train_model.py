@@ -14,6 +14,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
@@ -76,6 +77,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--checkpoint-dir", type=Path, default=DEFAULT_CHECKPOINT_DIR, help="Where to save checkpoints.")
     parser.add_argument("--device", default="cuda" if torch.cuda.is_available() else "cpu", help="Training device.")
     parser.add_argument("--seed", type=int, default=42, help="Random seed.")
+    parser.add_argument("--tensorboard", action="store_true", help="Enable TensorBoard logging.")
     parser.add_argument("--verbose", action="store_true", help="Enable debug logging.")
     return parser.parse_args()
 
@@ -124,6 +126,7 @@ def main() -> None:
     sequence_length = dataset.metadata.get("sequence_length", dataset.sequences.shape[1])
     feature_dim = dataset.sequences.shape[2]
     num_classes = int(dataset.labels.max().item() + 1)
+    label_map = dataset.metadata.get("label_map", {})
 
     dataloader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True, num_workers=2, pin_memory=True)
     model = build_model(args.architecture, sequence_length, feature_dim, num_classes, args.hidden_dim, args.dropout).to(args.device)
@@ -131,13 +134,29 @@ def main() -> None:
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.5)
 
+    # Initialize TensorBoard writer if enabled
+    writer = None
+    if args.tensorboard:
+        log_dir = args.checkpoint_dir / "runs" / f"{args.architecture}_{args.dataset.stem}"
+        writer = SummaryWriter(log_dir=str(log_dir))
+        logging.info("TensorBoard logging enabled. Run: tensorboard --logdir %s", log_dir.parent)
+
     args.checkpoint_dir.mkdir(parents=True, exist_ok=True)
     best_acc = 0.0
     for epoch in range(1, args.epochs + 1):
         train_loss, train_acc = train_epoch(model, dataloader, optimizer, criterion, args.device)
         val_acc = evaluate(model, dataloader, args.device)
         scheduler.step()
+        
+        # Log to TensorBoard
+        if writer is not None:
+            writer.add_scalar("Loss/train", train_loss, epoch)
+            writer.add_scalar("Accuracy/train", train_acc, epoch)
+            writer.add_scalar("Accuracy/val", val_acc, epoch)
+            writer.add_scalar("Learning_Rate", scheduler.get_last_lr()[0], epoch)
+        
         logging.info("Epoch %d: loss=%.4f train_acc=%.3f val_acc=%.3f", epoch, train_loss, train_acc, val_acc)
+        
         if val_acc > best_acc:
             best_acc = val_acc
             checkpoint_path = args.checkpoint_dir / f"{args.architecture}_epoch{epoch}_acc{val_acc:.3f}.pt"
@@ -149,11 +168,17 @@ def main() -> None:
                     "sequence_length": sequence_length,
                     "feature_dim": feature_dim,
                     "num_classes": num_classes,
+                    "hidden_dim": args.hidden_dim,
+                    "dropout": args.dropout,
+                    "label_map": label_map,
                 },
                 checkpoint_path,
             )
             logging.info("Saved checkpoint %s", checkpoint_path)
 
+    if writer is not None:
+        writer.close()
+    
     logging.info("Training finished. Best accuracy %.3f", best_acc)
 
 
