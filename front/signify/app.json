@@ -4,11 +4,11 @@
     "slug": "signify",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/images/icon.png",
     "scheme": "signify",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/images/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#0066FF"
     },
@@ -19,11 +19,12 @@
     "android": {
       "package": "com.yourcompany.signify",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#0066FF"
       }
     },
     "web": {
-      "favicon": "./assets/favicon.png"
+      "favicon": "./assets/images/favicon.png"
     }
   }
 }
