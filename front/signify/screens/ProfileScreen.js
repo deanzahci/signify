@@ -1,12 +1,163 @@
-import React from 'react';
-import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Alert,
+  ActivityIndicator,
+  Platform
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../styles/colors';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { formatLeaderboardValue } from '../services/leaderboardService';
 
 const ProfileScreen = () => {
   const { user, signOut } = useAuth();
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Fetch user data from Firebase
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const userRef = doc(db, 'users', user.id);
+        const userSnap = await getDoc(userRef);
+
+        if (userSnap.exists()) {
+          setUserData(userSnap.data());
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [user]);
+
+  // Format date
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'Unknown';
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  };
+
+  // Handle profile picture update
+  const handleEditProfilePicture = async () => {
+    Alert.alert(
+      'Change Profile Picture',
+      'Choose an option',
+      [
+        {
+          text: 'Take Photo',
+          onPress: takePhoto,
+        },
+        {
+          text: 'Choose from Gallery',
+          onPress: pickImage,
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
+  // Take photo with camera
+  const takePhoto = async () => {
+    const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      Alert.alert('Permission Required', 'Camera permission is required to take photos');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      await uploadProfilePicture(result.assets[0].uri);
+    }
+  };
+
+  // Pick image from gallery
+  const pickImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (permissionResult.granted === false) {
+      Alert.alert('Permission Required', 'Gallery permission is required to select photos');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      await uploadProfilePicture(result.assets[0].uri);
+    }
+  };
+
+  // Upload profile picture to Firebase Storage
+  const uploadProfilePicture = async (imageUri) => {
+    if (!user?.id) return;
+
+    setUploadingImage(true);
+    try {
+      // Convert image to blob
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+
+      // Upload to Firebase Storage
+      const storage = getStorage();
+      const storageRef = ref(storage, `profilePictures/${user.id}_${Date.now()}.jpg`);
+      const snapshot = await uploadBytes(storageRef, blob);
+
+      // Get download URL
+      const downloadURL = await getDownloadURL(snapshot.ref);
+
+      // Update Firestore
+      const userRef = doc(db, 'users', user.id);
+      await updateDoc(userRef, {
+        photoURL: downloadURL
+      });
+
+      // Update local state
+      setUserData(prev => ({ ...prev, photoURL: downloadURL }));
+
+      Alert.alert('Success', 'Profile picture updated successfully!');
+    } catch (error) {
+      console.error('Error uploading profile picture:', error);
+      Alert.alert('Error', 'Failed to update profile picture. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
 
   const handleSignOut = () => {
     Alert.alert(
@@ -27,6 +178,16 @@ const ProfileScreen = () => {
     );
   };
 
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.brutalBlue} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.content}>
@@ -41,31 +202,40 @@ const ProfileScreen = () => {
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
-            <View style={styles.profileImageWrapper}>
-              {user?.picture ? (
+            <TouchableOpacity
+              onPress={handleEditProfilePicture}
+              disabled={uploadingImage}
+              style={styles.profileImageWrapper}
+            >
+              {uploadingImage ? (
+                <View style={styles.profileIconContainer}>
+                  <ActivityIndicator size="large" color={colors.brutalWhite} />
+                </View>
+              ) : userData?.photoURL || user?.picture ? (
                 <View style={styles.profileImageContainer}>
                   <Image
-                    source={{ uri: user.picture }}
+                    source={{ uri: userData?.photoURL || user?.picture }}
                     style={styles.profileImage}
                   />
+                  <View style={styles.editBadge}>
+                    <Ionicons name="camera" size={16} color={colors.brutalWhite} />
+                  </View>
                 </View>
               ) : (
                 <View style={styles.profileIconContainer}>
                   <Ionicons name="person" size={40} color={colors.brutalWhite} />
+                  <View style={styles.editBadge}>
+                    <Ionicons name="camera" size={16} color={colors.brutalWhite} />
+                  </View>
                 </View>
               )}
-              {/* Show Google badge if signed in with Google */}
-              {user?.picture && (
-                <View style={styles.googleBadge}>
-                  <Ionicons name="logo-google" size={16} color={colors.brutalWhite} />
-                </View>
-              )}
-            </View>
+            </TouchableOpacity>
+
             <Text style={styles.profileName}>
-              {user?.name || 'Guest User'}
+              {userData?.name || user?.name || 'Guest User'}
             </Text>
             <Text style={styles.profileEmail}>
-              {user?.email || 'Not signed in'}
+              {userData?.email || user?.email || 'Not signed in'}
             </Text>
           </View>
 
@@ -74,15 +244,28 @@ const ProfileScreen = () => {
           <View style={styles.statsSection}>
             <View style={styles.statRow}>
               <Text style={styles.statLabel}>Member Since:</Text>
-              <Text style={styles.statValue}>Nov 2024</Text>
+              <Text style={styles.statValue}>
+                {formatDate(userData?.createdAt)}
+              </Text>
             </View>
             <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Total Points:</Text>
-              <Text style={styles.statValue}>850</Text>
+              <Text style={styles.statLabel}>Quiz Highscore:</Text>
+              <Text style={styles.statValue}>
+                {formatLeaderboardValue('highScoreQuiz', userData?.highScoreQuiz || 0)}
+              </Text>
             </View>
             <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Level:</Text>
-              <Text style={styles.statValue}>Beginner</Text>
+              <Text style={styles.statLabel}>Speed Highscore:</Text>
+              <Text style={styles.statValue}>
+                {formatLeaderboardValue('highScoreSpeed', userData?.highScoreSpeed || 0)}
+              </Text>
+            </View>
+            
+            <View style={styles.statRow}>
+              <Text style={styles.statLabel}>Games Played:</Text>
+              <Text style={styles.statValue}>
+                {userData?.gamesPlayed || 0} games
+              </Text>
             </View>
           </View>
         </View>
@@ -139,6 +322,11 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 24,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   header: {
     marginBottom: 32,
   },
@@ -178,7 +366,6 @@ const styles = StyleSheet.create({
     height: 96,
     borderWidth: 3,
     borderColor: colors.brutalBlack,
-    borderRadius: 48,
     overflow: 'hidden',
     shadowColor: colors.brutalBlack,
     shadowOffset: { width: 4, height: 4 },
@@ -198,7 +385,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brutalBlue,
     borderWidth: 3,
     borderColor: colors.brutalBlack,
-    borderRadius: 48,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: colors.brutalBlack,
@@ -207,16 +393,15 @@ const styles = StyleSheet.create({
     shadowRadius: 0,
     elevation: 4,
   },
-  googleBadge: {
+  editBadge: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: colors.brutalRed,
+    bottom: -4,
+    right: -4,
+    backgroundColor: colors.brutalGreen,
     borderWidth: 3,
     borderColor: colors.brutalBlack,
-    borderRadius: 14,
-    width: 28,
-    height: 28,
+    width: 32,
+    height: 32,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: colors.brutalBlack,

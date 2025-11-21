@@ -45,9 +45,12 @@ const TabNavigator = () => {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 3,
           borderTopColor: '#000000',
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 8,
+          height: 85,
+          paddingBottom: 10,
+          paddingTop: 10,
+        },
+        tabBarIconStyle: {
+          marginTop: 5,
         },
         headerShown: false,
       })}

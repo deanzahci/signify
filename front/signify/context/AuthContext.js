@@ -74,10 +74,13 @@ export const AuthProvider = ({ children }) => {
         await setDoc(userRef, {
           ...userData,
           createdAt: serverTimestamp(),
-          points: 0,
-          level: 'Beginner',
+
+          levelSpeed: 1,
+          levelQuiz:1,
+          highScoreSpeed:0,
+          highScoreQuiz:0,
           gamesPlayed: 0,
-          highScore: 0,
+    
         });
       } else {
         // Existing user - update last login
