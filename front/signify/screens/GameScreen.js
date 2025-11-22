@@ -1,13 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { doc, updateDoc, increment } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
-import { updateLetterStats } from '../utils/gameApi';
-import {
-  fetchQuizWords as quizGame,
-  fetchWordModeWords as wordGame,
-  fetchSpeedWords as speedGame
-} from '../utils/gameApi';
+import { updateLetterStats, quizGame, speedGame } from '../utils/gameApi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../context/AuthContext';
 
 // Import screens
 import GameSelectScreen from './GameSelectScreen';
@@ -30,8 +26,50 @@ const FALLBACK_WORD_BANK = [
   { word: 'HAPPY', hint: 'Feeling joy or contentment' },
 ];
 
-const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
+const GameScreen = ({ onBackPress, onCameraReady }) => {
+  // Get user from AuthContext
+  const { user } = useAuth();
+  
+  // Local state for user stats
+  const [userStats, setUserStats] = useState({
+    levelQuiz: 1,
+    levelSpeed: 1,
+    quizHighScore: 0,
+    speedHighScore: 0,
+    gamesPlayed: 0
+  });
+  
   const [currentScreen, setCurrentScreen] = useState('select');
+
+  // Fetch user stats when component mounts or user changes
+  useEffect(() => {
+    const fetchUserStats = async () => {
+      if (user && user.id) {
+        try {
+          const { doc, getDoc } = await import('firebase/firestore');
+          const { db } = await import('../config/firebase');
+          const userRef = doc(db, 'users', user.id);
+          const userSnap = await getDoc(userRef);
+          
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            setUserStats({
+              levelQuiz: userData.levelQuiz || 1,
+              levelSpeed: userData.levelSpeed || 1,
+              quizHighScore: userData.highScoreQuiz || 0,
+              speedHighScore: userData.highScoreSpeed || 0,
+              gamesPlayed: userData.gamesPlayed || 0
+            });
+            console.log('📊 User stats loaded:', userData);
+          }
+        } catch (error) {
+          console.error('Error fetching user stats:', error);
+        }
+      }
+    };
+    
+    fetchUserStats();
+  }, [user]);
 
   // ====================  SHARED STATE ====================
   const [quizQuestion, setQuizQuestion] = useState(null);
@@ -138,15 +176,17 @@ const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
     let wordsToUse = FALLBACK_WORD_BANK;
 
     // Call game API with user data (after navigation for perceived speed)
+    console.log('🔍 Checking user for API call:', { hasUser: !!user, userId: user?.id, userStats });
+    
     if (user && user.id) {
       try {
-        console.log('Calling quizGame API...');
+        console.log('📞 Calling quizGame API with userId:', user.id, 'level:', currentLevel);
         const apiResponse = await quizGame(user.id, currentLevel);
-        console.log('Quiz API Response:', apiResponse);
+        console.log('📦 Quiz API Response:', apiResponse);
 
         if (apiResponse.success && apiResponse.words && apiResponse.words.length > 0) {
-          console.log('Quiz game data from API:', apiResponse);
-          console.log('Words with hints:', apiResponse.words);
+          console.log('✅ Quiz game data from API:', apiResponse);
+          console.log('📝 Words with hints:', apiResponse.words);
 
           // Use words from API
           wordsToUse = apiResponse.words.map(item => ({
@@ -154,19 +194,19 @@ const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
             hint: item.hint || 'No hint available'
           }));
 
-          console.log('Using words from API for quiz:', JSON.stringify(wordsToUse));
+          console.log('🎯 Using words from API for quiz:', JSON.stringify(wordsToUse));
         } else {
           // Fallback to default word bank
-          console.log('Using fallback word bank for quiz');
+          console.log('⚠️ API returned no words, using fallback word bank for quiz');
           wordsToUse = FALLBACK_WORD_BANK.slice(0, 5);
         }
       } catch (error) {
-        console.error('Error calling quiz API:', error);
+        console.error('❌ Error calling quiz API:', error);
         // Use fallback on error
         wordsToUse = FALLBACK_WORD_BANK.slice(0, 5);
       }
     } else {
-      console.log('No user logged in - using fallback for quiz');
+      console.log('⚠️ No user logged in - using fallback for quiz');
       wordsToUse = FALLBACK_WORD_BANK.slice(0, 5);
     }
 
@@ -210,8 +250,8 @@ const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
     // Call word mode API with user data
     if (user && user.id) {
       try {
-        console.log('Calling wordGame API for word mode...');
-        const apiResponse = await wordGame(user.id, currentLevel);
+        console.log('Calling quizGame API for word mode...');
+        const apiResponse = await quizGame(user.id, currentLevel);
         console.log('Word Mode API Response:', apiResponse);
 
         if (apiResponse.success && apiResponse.words && apiResponse.words.length > 0) {
