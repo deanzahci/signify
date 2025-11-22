@@ -7,15 +7,13 @@ ENV PYTHONUNBUFFERED=1
 # Install system dependencies required for OpenCV and MediaPipe
 # libgl1-mesa-glx: Required for OpenGL support in OpenCV
 # libglib2.0-0: Required for GObject introspection in OpenCV/MediaPipe
-# curl: Required to install uv
 RUN apt-get update && apt-get install -y \
     libgl1-mesa-glx \
     libglib2.0-0 \
-    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
+# Install uv using pip
+RUN pip install uv
 
 # Set working directory
 WORKDIR /app

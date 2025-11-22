@@ -1,5 +1,6 @@
 import logging
 import sys
+import time
 from pathlib import Path
 from typing import List, Optional
 
@@ -39,7 +40,15 @@ class InferenceService:
         sequence_array = np.stack(keypoint_sequence, axis=0)
 
         if self.mock_mode:
-            return [1.0 / self.num_classes] * self.num_classes
+            # Mock behavior for demo/deployment without model:
+            # Cycle through classes every 2 seconds to demonstrate UI updates
+            mock_class_idx = int(time.time() / 2.0) % self.num_classes
+            
+            # Create a "confident" prediction (0.95) for the current mock class
+            probs = [0.002] * self.num_classes  # Small base probability (0.002 * 25 = 0.05)
+            probs[mock_class_idx] = 0.95       # Dominant probability
+            
+            return probs
         else:
             try:
                 tensor = torch.from_numpy(sequence_array).float().unsqueeze(0)
