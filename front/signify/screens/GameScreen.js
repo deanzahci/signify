@@ -364,25 +364,30 @@ const GameScreen = () => {
 
       // Check if word is complete
       if (currentLetterIndex + 1 >= quizQuestion.word.length) {
-        // Word completed!
-        setQuizScore(quizScore + 10);
-        setQuizFeedback('🎉 CORRECT! +10 points');
-        setQuizRound(quizRound + 1);
-
-        // Check if there are more words in this level
-        const wordBank = quizWordsFromApi.length > 0 ? quizWordsFromApi : FALLBACK_WORD_BANK;
-        const availableWords = wordBank.filter(
-          item => !usedQuizWords.includes(item.word)
-        );
-
-        if (availableWords.length === 0) {
-          // Level completed - stop game
-          setQuizGameActive(false);
-        }
-
+        // Word completed! Increment to show the last letter first
+        setCurrentLetterIndex(currentLetterIndex + 1);
+        
+        // Then wait a moment to show the last letter before success message
         setTimeout(() => {
-          generateQuizQuestion();
-        }, 2000);
+          setQuizScore(quizScore + 10);
+          setQuizFeedback('🎉 CORRECT! +10 points');
+          setQuizRound(quizRound + 1);
+
+          // Check if there are more words in this level
+          const wordBank = quizWordsFromApi.length > 0 ? quizWordsFromApi : FALLBACK_WORD_BANK;
+          const availableWords = wordBank.filter(
+            item => !usedQuizWords.includes(item.word)
+          );
+
+          if (availableWords.length === 0) {
+            // Level completed - stop game
+            setQuizGameActive(false);
+          }
+
+          setTimeout(() => {
+            generateQuizQuestion();
+          }, 2000);
+        }, 1000); // Wait 1 second to show the last letter before showing success message
       } else {
         // Move to next letter
         setCurrentLetterIndex(currentLetterIndex + 1);
@@ -561,7 +566,8 @@ const GameScreen = () => {
 
       // Check if word is complete
       if (currentLetterIndex + 1 >= quizQuestion.word.length) {
-        // Word completed!
+        // Word completed! Increment to show the last letter first
+        setCurrentLetterIndex(currentLetterIndex + 1);
         setTypingScore(typingScore + 1);
         setQuizFeedback('🎉 WORD COMPLETED! +1 point');
 

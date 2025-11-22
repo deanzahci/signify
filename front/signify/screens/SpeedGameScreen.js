@@ -218,17 +218,17 @@ const SpeedGameScreen = ({
 
       {/* Bottom Content Area (40% of screen) */}
       <View style={styles.bottomContentArea}>
-        {/* Timer Display */}
-        <View style={[styles.quizCard, { backgroundColor: localTimer > 10 ? colors.brutalGreen : colors.brutalRed, marginBottom: 12 }]}>
-          <Text style={[styles.quizCardLabel, { color: colors.brutalWhite }]}>⏱️ TIME REMAINING</Text>
-          <Text style={[styles.quizLetterCount, { color: colors.brutalWhite, fontSize: 48 }]}>
+        {/* Timer Display - Compact */}
+        <View style={[styles.quizCard, { backgroundColor: localTimer > 10 ? colors.brutalGreen : colors.brutalRed, marginBottom: 6, paddingVertical: 8 }]}>
+          <Text style={[styles.quizCardLabel, { color: colors.brutalWhite, fontSize: 11 }]}>⏱️ TIME</Text>
+          <Text style={[styles.quizLetterCount, { color: colors.brutalWhite, fontSize: 32 }]}>
             {localTimer}s
           </Text>
         </View>
 
-        {/* Current Word Display - Large */}
+        {/* Current Word Display - Compact */}
         <View style={styles.wordProgressContainerBottom}>
-          <Text style={styles.wordProgressLabelBottom}>CURRENT WORD:</Text>
+          <Text style={[styles.wordProgressLabelBottom, { fontSize: 11, marginBottom: 4 }]}>CURRENT WORD:</Text>
           <View style={styles.wordDisplay}>
             {quizQuestion.word.split('').map((letter, idx) => (
               <View
@@ -253,69 +253,30 @@ const SpeedGameScreen = ({
           </View>
         </View>
 
-        {/* Current Letter to Sign - Large Display */}
+        {/* Current Letter to Sign - Compact */}
         {currentLetterIndex < quizQuestion.word.length && (
-          <View style={styles.currentSignPromptBottom}>
-            <Text style={styles.currentSignLabelBottom}>SIGN THIS LETTER:</Text>
-            <Text style={styles.currentSignLetterBottom}>
+          <View style={[styles.currentSignPromptBottom, { paddingVertical: 6, marginVertical: 4 }]}>
+            <Text style={[styles.currentSignLabelBottom, { fontSize: 11, marginBottom: 2 }]}>SIGN:</Text>
+            <Text style={[styles.currentSignLetterBottom, { fontSize: 24 }]}>
               {quizQuestion.word[currentLetterIndex]}
             </Text>
           </View>
         )}
 
-        {/* Confidence Indicator / Test Button */}
-        <View style={styles.detectionContainer}>
-          {/* Connection Status */}
-          <View style={styles.connectionStatus}>
-            <View style={[styles.statusDot, { backgroundColor: isConnected ? colors.brutalGreen : colors.brutalRed }]} />
-            <Text style={styles.statusText}>
-              {isConnected ? '⚡ AI Racing Mode' : '⚠️ AI NOT ONLINE - Test Mode'}
-            </Text>
-          </View>
-
-          {/* Confidence Progress Bar for Speed Mode */}
-          {isConnected && (
-            <View style={styles.confidenceContainer}>
-              <View style={styles.progressBarContainer}>
-                <View
-                  style={[
-                    styles.progressBar,
-                    {
-                      width: `${currentConfidence * 100}%`,
-                      backgroundColor: currentConfidence >= 0.7
-                        ? colors.brutalGreen
-                        : currentConfidence >= 0.4
-                        ? colors.brutalYellow
-                        : colors.brutalRed
-                    }
-                  ]}
-                />
-              </View>
-              <Text style={styles.confidenceLabel}>
-                {detectedLetter === quizQuestion.word[currentLetterIndex] && currentConfidence >= 0.7
-                  ? '🔥 ALMOST THERE!'
-                  : `CONFIDENCE: ${Math.round(currentConfidence * 100)}%`}
-              </Text>
-            </View>
-          )}
-
-          {/* Fallback Test Button when not connected */}
-          {!isConnected && (
-            <TouchableOpacity
-              style={[
-                styles.detectButtonBottom,
-                isDetecting && styles.detectButtonDisabled,
-              ]}
-              onPress={onSimulateDetection}
-              disabled={isDetecting}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.detectButtonText}>
-                {isDetecting ? 'SIMULATING...' : '🤚 TEST MODE: SIMULATE SIGN'}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        {/* Test Button - Compact */}
+        <TouchableOpacity
+          style={[
+            styles.detectButtonBottom,
+            isDetecting && styles.detectButtonDisabled,
+          ]}
+          onPress={onSimulateDetection}
+          disabled={isDetecting}
+          activeOpacity={0.9}
+        >
+          <Text style={styles.detectButtonText}>
+            {isDetecting ? 'DETECTING...' : '🤚 DETECT SIGN'}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -578,12 +539,13 @@ const styles = StyleSheet.create({
   // Test Button
   detectButtonBottom: {
     backgroundColor: colors.brutalBlue,
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: colors.brutalBlack,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 6,
     shadowColor: colors.brutalBlack,
-    shadowOffset: { width: 4, height: 4 },
+    shadowOffset: { width: 3, height: 3 },
     shadowOpacity: 1,
     shadowRadius: 0,
   },
@@ -592,7 +554,7 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   detectButtonText: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: 'bold',
     color: colors.brutalWhite,
     textAlign: 'center',

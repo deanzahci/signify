@@ -32,8 +32,7 @@ class SignDetectionManager {
   initialize(wsUrl, callbacks = {}) {
     this.callbacks = { ...this.callbacks, ...callbacks };
 
-    console.log('🚀 Initializing Sign Detection Manager');
-    console.log('🔗 WebSocket URL:', wsUrl || 'ws://localhost:8000/ws');
+    console.log('🚀 Sign Detection: Attempting to connect to backend');
 
     // Setup WebSocket connection
     WebSocketService.connect(wsUrl, {
@@ -70,8 +69,6 @@ class SignDetectionManager {
     // Send new letter to backend to reset state
     if (this.wsConnected) {
       WebSocketService.sendNewLetter(targetLetter);
-    } else {
-      console.log('⚠️ API NOT ONLINE - Cannot send target letter to backend');
     }
 
     // Start capturing frames
@@ -104,8 +101,6 @@ class SignDetectionManager {
     // Send new letter to backend
     if (this.wsConnected) {
       WebSocketService.sendNewLetter(newLetter);
-    } else {
-      console.log('⚠️ API NOT ONLINE - Cannot update target letter on backend');
     }
   }
 
@@ -114,9 +109,7 @@ class SignDetectionManager {
    */
   handleFrameCapture(frameData, metadata) {
     if (!this.isActive || !this.wsConnected) {
-      if (metadata.frameNumber % 10 === 0 && !this.wsConnected) {
-        console.log('⚠️ API NOT ONLINE - Skipping frame send');
-      }
+      // Silently skip if not connected - no need to spam logs
       return;
     }
 
@@ -201,8 +194,9 @@ class SignDetectionManager {
    * Handle WebSocket connection lost
    */
   handleConnectionLost() {
-    console.log('❌ Sign detection disconnected from backend');
-    console.log('⚠️ API NOT ONLINE - Connection lost');
+    if (this.wsConnected) {
+      console.log('⚠️ Backend disconnected - Using manual sign detection');
+    }
     this.wsConnected = false;
 
     if (this.callbacks.onConnectionChange) {
@@ -214,8 +208,10 @@ class SignDetectionManager {
    * Handle WebSocket connection error
    */
   handleConnectionError(error) {
-    console.error('❌ Sign detection connection error:', error);
-    console.log('⚠️ API NOT ONLINE - Connection error occurred');
+    // Silently handle error - backend not available
+    if (!this.wsConnected) {
+      console.log('ℹ️ Using manual detection mode (backend not available)');
+    }
   }
 
   /**

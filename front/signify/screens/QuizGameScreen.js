@@ -148,7 +148,7 @@ const QuizGameScreen = ({
             </TouchableOpacity>
 
             <View style={styles.topCenter}>
-              <Text style={styles.topScoreLabel}>LEVEL {userLevelQuiz} | SCORE: {quizScore}</Text>
+              <Text style={styles.topScoreLabel}>LV{userLevelQuiz} | {quizScore}</Text>
               <Text style={styles.topRoundLabel}>Round {quizRound + 1}</Text>
             </View>
 
@@ -189,15 +189,15 @@ const QuizGameScreen = ({
 
       {/* Bottom Content Area (40% of screen) */}
       <View style={styles.bottomContentArea}>
-        {/* Hint Card - Always Visible */}
-        <View style={[styles.quizCard, { backgroundColor: colors.brutalYellow, marginBottom: 8, paddingVertical: 12 }]}>
-          <Text style={styles.quizCardLabel}>💡 HINT</Text>
-          <Text style={styles.quizHint}>{quizQuestion.hint}</Text>
+        {/* Hint Card - Compact */}
+        <View style={[styles.quizCard, { backgroundColor: colors.brutalYellow, marginBottom: 6, paddingVertical: 8, paddingHorizontal: 12 }]}>
+          <Text style={[styles.quizCardLabel, { fontSize: 11 }]}>💡 HINT</Text>
+          <Text style={[styles.quizHint, { fontSize: 13 }]}>{quizQuestion.hint}</Text>
         </View>
 
-        {/* Word Progress - Show only guessed letters, rest are hidden */}
+        {/* Word Progress - Compact */}
         <View style={styles.wordProgressContainerBottom}>
-          <Text style={[styles.wordProgressLabelBottom, { fontSize: 14, marginBottom: 8 }]}>WORD PROGRESS:</Text>
+          <Text style={[styles.wordProgressLabelBottom, { fontSize: 11, marginBottom: 4 }]}>WORD PROGRESS:</Text>
           <View style={styles.wordDisplay}>
             {quizQuestion.word.split('').map((letter, idx) => (
               <View
@@ -222,72 +222,30 @@ const QuizGameScreen = ({
           </View>
         </View>
 
-        {/* Current Letter to Sign - Compact Version */}
+        {/* Current Letter to Sign - Compact */}
         {currentLetterIndex < quizQuestion.word.length && (
-          <View style={[styles.currentSignPromptBottom, { paddingVertical: 8, marginVertical: 8 }]}>
-            <Text style={[styles.currentSignLabelBottom, { fontSize: 14, marginBottom: 4 }]}>
-              {currentLetterIndex === 0 ? 'SIGN THE FIRST LETTER' : 'NEXT LETTER'}
+          <View style={[styles.currentSignPromptBottom, { paddingVertical: 6, marginVertical: 4 }]}>
+            <Text style={[styles.currentSignLabelBottom, { fontSize: 11, marginBottom: 2 }]}>
+              {currentLetterIndex === 0 ? 'SIGN FIRST LETTER' : 'NEXT'}
             </Text>
-            <Text style={[styles.currentSignLetterBottom, { fontSize: 32 }]}>?</Text>
+            <Text style={[styles.currentSignLetterBottom, { fontSize: 24 }]}>?</Text>
           </View>
         )}
 
-        {/* Confidence Indicator / Test Button */}
-        <View style={styles.detectionContainer}>
-          {/* Connection Status */}
-          <View style={styles.connectionStatus}>
-            <View style={[styles.statusDot, { backgroundColor: isConnected ? colors.brutalGreen : colors.brutalRed }]} />
-            <Text style={styles.statusText}>
-              {isConnected ? 'AI Connected' : 'AI NOT ONLINE - Test Mode'}
-            </Text>
-          </View>
-
-          {/* Confidence Progress Bar */}
-          {isConnected && (
-            <View style={styles.confidenceContainer}>
-              <Text style={styles.confidenceLabel}>
-                DETECTION CONFIDENCE: {Math.round(currentConfidence * 100)}%
-              </Text>
-              <View style={styles.progressBarContainer}>
-                <View
-                  style={[
-                    styles.progressBar,
-                    {
-                      width: `${currentConfidence * 100}%`,
-                      backgroundColor: currentConfidence >= signConfig.recognition.confidenceThreshold
-                        ? colors.brutalGreen
-                        : currentConfidence >= 0.5
-                        ? colors.brutalYellow
-                        : colors.brutalRed
-                    }
-                  ]}
-                />
-              </View>
-              {detectedLetter && (
-                <Text style={styles.detectedLetterText}>
-                  Detecting: {detectedLetter} {detectedLetter === quizQuestion.word[currentLetterIndex] ? '✓' : '✗'}
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* Fallback Test Button when not connected */}
-          {!isConnected && (
-            <TouchableOpacity
-              style={[
-                styles.detectButtonBottom,
-                isDetecting && styles.detectButtonDisabled,
-              ]}
-              onPress={onSimulateDetection}
-              disabled={isDetecting}
-              activeOpacity={0.9}
-            >
-              <Text style={styles.detectButtonText}>
-                {isDetecting ? 'SIMULATING...' : '🤚 TEST MODE: SIMULATE SIGN'}
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
+        {/* Test Button - Compact and visible */}
+        <TouchableOpacity
+          style={[
+            styles.detectButtonBottom,
+            isDetecting && styles.detectButtonDisabled,
+          ]}
+          onPress={onSimulateDetection}
+          disabled={isDetecting}
+          activeOpacity={0.9}
+        >
+          <Text style={styles.detectButtonText}>
+            {isDetecting ? 'DETECTING...' : '🤚 DETECT SIGN'}
+          </Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -360,33 +318,36 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 60,
     paddingBottom: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)', // Add semi-transparent background
   },
   topButton: {
     backgroundColor: colors.brutalWhite,
     borderWidth: 3,
     borderColor: colors.brutalBlack,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     shadowColor: colors.brutalBlack,
     shadowOffset: { width: 3, height: 3 },
     shadowOpacity: 1,
     shadowRadius: 0,
+    minWidth: 80, // Ensure minimum width
   },
   topButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
     color: colors.brutalBlack,
   },
   topCenter: {
     alignItems: 'center',
+    flex: 0, // Don't let center grow and squeeze buttons
   },
   topScoreLabel: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: 'bold',
     color: colors.brutalWhite,
     backgroundColor: colors.brutalBlue,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
     borderWidth: 3,
     borderColor: colors.brutalBlack,
   },
@@ -485,17 +446,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   letterDisplayBox: {
-    width: 50,
-    height: 60,
+    width: 40,
+    height: 48,
     backgroundColor: colors.brutalWhite,
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: colors.brutalBlack,
-    marginHorizontal: 4,
-    marginVertical: 4,
+    marginHorizontal: 3,
+    marginVertical: 3,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: colors.brutalBlack,
-    shadowOffset: { width: 4, height: 4 },
+    shadowOffset: { width: 3, height: 3 },
     shadowOpacity: 1,
     shadowRadius: 0,
   },
@@ -504,10 +465,10 @@ const styles = StyleSheet.create({
   },
   letterDisplayBoxCurrent: {
     backgroundColor: colors.brutalYellow,
-    borderWidth: 5,
+    borderWidth: 4,
   },
   letterDisplayText: {
-    fontSize: 28,
+    fontSize: 22,
     fontWeight: 'bold',
     color: colors.brutalBlack,
   },
@@ -546,15 +507,16 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
 
-  // Test Button
+  // Test Button - Smaller and compact
   detectButtonBottom: {
     backgroundColor: colors.brutalBlue,
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: colors.brutalBlack,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    marginTop: 6,
     shadowColor: colors.brutalBlack,
-    shadowOffset: { width: 4, height: 4 },
+    shadowOffset: { width: 3, height: 3 },
     shadowOpacity: 1,
     shadowRadius: 0,
   },
@@ -563,11 +525,11 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   detectButtonText: {
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: 'bold',
     color: colors.brutalWhite,
     textAlign: 'center',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
 
   // Detection Container
