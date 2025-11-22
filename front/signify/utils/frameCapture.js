@@ -12,6 +12,8 @@ class FrameCapture {
     this.maxWidth = 640; // Max width for performance
     this.frameCount = 0;
     this.lastCaptureTime = 0;
+    this.isProcessingFrame = false; // Track if we're currently processing a frame
+    this.cameraReady = false; // Track camera readiness
   }
 
   /**
@@ -26,9 +28,10 @@ class FrameCapture {
       return;
     }
 
-    const { frameRate = 100, quality = 0.5 } = options;
+    const { frameRate = 200, quality = 0.5 } = options; // Increased default to 200ms for safer capture
     this.frameRate = frameRate;
     this.quality = quality;
+    this.cameraReady = true;
 
     console.log('📸 Starting frame capture:', {
       frameRate: `${frameRate}ms (${1000/frameRate} FPS)`,
@@ -38,17 +41,21 @@ class FrameCapture {
 
     this.isCapturing = true;
     this.frameCount = 0;
+    this.isProcessingFrame = false;
 
     this.captureInterval = setInterval(async () => {
-      if (!cameraRef || !cameraRef.current) {
-        console.log('⚠️ Camera ref not available');
+      // Skip if camera not ready or already processing a frame
+      if (!cameraRef || !cameraRef.current || this.isProcessingFrame || !this.cameraReady) {
         return;
       }
 
       try {
         await this.captureFrame(cameraRef, onFrame);
       } catch (error) {
-        console.error('❌ Frame capture error:', error);
+        // Silently skip errors to avoid spam
+        if (this.frameCount % 10 === 0) {
+          console.log('⚠️ Frame capture skipped:', error.message);
+        }
       }
     }, frameRate);
   }
@@ -57,14 +64,21 @@ class FrameCapture {
    * Capture a single frame
    */
   async captureFrame(cameraRef, onFrame) {
-    if (!cameraRef.current) {
-      console.log('⚠️ Camera not ready for capture');
+    if (!cameraRef.current || this.isProcessingFrame) {
       return;
     }
 
     const now = Date.now();
+    this.isProcessingFrame = true;
 
     try {
+      // Check if takePictureAsync is available
+      if (!cameraRef.current.takePictureAsync) {
+        // Fall back to alternative method
+        await this.captureFrameAlternative(cameraRef, onFrame);
+        return;
+      }
+
       // Using takePictureAsync for Expo Camera
       const photo = await cameraRef.current.takePictureAsync({
         quality: this.quality,
@@ -102,10 +116,21 @@ class FrameCapture {
         });
       }
     } catch (error) {
-      // Only log errors occasionally to avoid spam when API is offline
+      // Handle camera unmounted error specifically
+      if (error.message && error.message.includes('unmounted')) {
+        this.cameraReady = false;
+        // Wait a bit before allowing captures again
+        setTimeout(() => {
+          this.cameraReady = true;
+        }, 500);
+      }
+
+      // Only log errors occasionally to avoid spam
       if (this.frameCount % 10 === 0) {
         console.log('⚠️ Could not capture frame:', error.message);
       }
+    } finally {
+      this.isProcessingFrame = false;
     }
   }
 
@@ -114,7 +139,6 @@ class FrameCapture {
    */
   async captureFrameAlternative(cameraRef, onFrame) {
     if (!cameraRef.current || !cameraRef.current.takePhoto) {
-      console.log('⚠️ Camera takePhoto method not available');
       return;
     }
 
@@ -130,10 +154,12 @@ class FrameCapture {
       this.frameCount++;
 
       // Log frame capture details
-      console.log('📸 Frame captured (alternative):', {
-        frameNumber: this.frameCount,
-        captureTime: `${now - this.lastCaptureTime}ms`
-      });
+      if (this.frameCount % 10 === 0) {
+        console.log('📸 Frame captured (alternative):', {
+          frameNumber: this.frameCount,
+          captureTime: `${now - this.lastCaptureTime}ms`
+        });
+      }
 
       this.lastCaptureTime = now;
 
@@ -144,7 +170,19 @@ class FrameCapture {
         });
       }
     } catch (error) {
-      console.log('⚠️ Alternative capture failed:', error.message);
+      // Handle camera unmounted error specifically
+      if (error.message && error.message.includes('unmounted')) {
+        this.cameraReady = false;
+        setTimeout(() => {
+          this.cameraReady = true;
+        }, 500);
+      }
+
+      if (this.frameCount % 10 === 0) {
+        console.log('⚠️ Alternative capture failed:', error.message);
+      }
+    } finally {
+      this.isProcessingFrame = false;
     }
   }
 
@@ -158,6 +196,8 @@ class FrameCapture {
     }
 
     this.isCapturing = false;
+    this.isProcessingFrame = false;
+    this.cameraReady = false;
 
     console.log('📸 Stopped frame capture:', {
       totalFramesCaptured: this.frameCount,
@@ -166,6 +206,16 @@ class FrameCapture {
 
     this.frameCount = 0;
     this.lastCaptureTime = 0;
+  }
+
+  /**
+   * Set camera ready state
+   */
+  setCameraReady(ready) {
+    this.cameraReady = ready;
+    if (ready) {
+      this.isProcessingFrame = false;
+    }
   }
 
   /**

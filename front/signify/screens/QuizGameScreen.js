@@ -17,6 +17,8 @@ import {
   useFloatingAnimation
 } from '../utils/animations';
 import { HintButton, QuickHint, HintModal, MiniHint } from '../components/HintSystem';
+import { updateLetterStats } from '../utils/gameApi';
+import { auth } from '../config/firebase';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -216,7 +218,18 @@ const QuizGameScreen = ({
   }, [currentLetterIndex]);
 
   // Handle hint button press
-  const handleHintPress = () => {
+  const handleHintPress = async () => {
+    // Track the current letter as a struggle letter when hint is used
+    if (quizQuestion && currentLetterIndex < quizQuestion.word.length) {
+      const currentLetter = quizQuestion.word[currentLetterIndex];
+      const user = auth.currentUser;
+      if (user) {
+        // Mark this letter as a skip/struggle since they needed a hint
+        await updateLetterStats(user.uid, currentLetter, 'skip');
+        console.log(`Tracked hint usage for letter: ${currentLetter}`);
+      }
+    }
+
     if (hintLevel === 1) {
       setShowQuickHint(true);
       setTimeout(() => setShowQuickHint(false), 3000);
@@ -237,19 +250,19 @@ const QuizGameScreen = ({
 
   if (!permission) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: themedColors.brutalWhite }]}>
-        <Text style={[styles.loadingText, { color: themedColors.brutalBlack }]}>Initializing camera...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: isDarkMode ? themedColors.brutalBackground : themedColors.brutalWhite }]}>
+        <Text style={[styles.loadingText, { color: themedColors.brutalText }]}>Initializing camera...</Text>
       </View>
     );
   }
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: themedColors.brutalWhite }]}>
-        <View style={styles.loadingContainer}>
-          <NBIcon name="Brain" size={48} color={themedColors.brutalBlack} />
-          <Text style={[styles.loadingText, { color: themedColors.brutalBlack }]}>Camera permission is required</Text>
-          <Text style={[styles.loadingSubtext, { color: themedColors.brutalBlack }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: isDarkMode ? themedColors.brutalBackground : themedColors.brutalWhite }]}>
+        <View style={[styles.loadingContainer, { backgroundColor: isDarkMode ? themedColors.brutalBackground : themedColors.brutalWhite }]}>
+          <NBIcon name="Brain" size={48} color={themedColors.brutalText} />
+          <Text style={[styles.loadingText, { color: themedColors.brutalText }]}>Camera permission is required</Text>
+          <Text style={[styles.loadingSubtext, { color: themedColors.brutalTextSecondary }]}>
             Please grant camera access to use Quiz Mode
           </Text>
           <TouchableOpacity
@@ -295,7 +308,7 @@ const QuizGameScreen = ({
   }
 
   return (
-    <View style={styles.quizFullScreen}>
+    <View style={[styles.quizFullScreen, isDarkMode && { backgroundColor: themedColors.brutalBackground }]}>
       {/* Camera View at Top (60% of screen) */}
       <View style={styles.cameraContainer}>
         <CameraView
@@ -376,7 +389,7 @@ const QuizGameScreen = ({
       </View>
 
       {/* Bottom Content Area (40% of screen) */}
-      <View style={styles.bottomContentArea}>
+      <View style={[styles.bottomContentArea, isDarkMode && { backgroundColor: themedColors.brutalBackground }]}>
         {/* Hint Card - Compact */}
         {quizQuestion && (
           <View style={[styles.quizCard, { backgroundColor: themedColors.brutalYellow, borderColor: themedColors.brutalBlack, borderWidth: 4, ...shadowStyle, marginBottom: 6, paddingVertical: 8, paddingHorizontal: 12 }]}>
@@ -628,6 +641,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora-Bold',
     color: colors.brutalWhite,
     marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
 
   // Camera Overlays

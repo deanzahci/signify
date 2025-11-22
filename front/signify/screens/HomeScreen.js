@@ -188,7 +188,15 @@ const HomeScreen = () => {
           {/* Sign Out Button */}
           <NBButton
             title="SIGN OUT"
-            onPress={signOut}
+            onPress={async () => {
+              try {
+                console.log('HomeScreen: Attempting to sign out...');
+                await signOut();
+                console.log('HomeScreen: Sign out successful');
+              } catch (error) {
+                console.error('HomeScreen: Sign out error:', error);
+              }
+            }}
             variant="danger"
             size="full"
             icon={<Ionicons name="log-out" size={20} color="#FFFFFF" />}

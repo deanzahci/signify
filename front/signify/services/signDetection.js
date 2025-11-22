@@ -82,7 +82,7 @@ class SignDetectionManager {
       cameraRef,
       (frameData, metadata) => this.handleFrameCapture(frameData, metadata),
       {
-        frameRate: 100, // 100ms = 10 FPS
+        frameRate: 200, // 200ms = 5 FPS for more stable capture
         quality: 0.5
       }
     );
@@ -125,7 +125,7 @@ class SignDetectionManager {
       cameraRef,
       (frameData, metadata) => this.handleFrameCapture(frameData, metadata),
       {
-        frameRate: 100, // 100ms = 10 FPS
+        frameRate: 200, // 200ms = 5 FPS for more stable capture
         quality: 0.5
       }
     );

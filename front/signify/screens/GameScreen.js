@@ -572,12 +572,14 @@ const GameScreen = () => {
     if (user && user.id) {
       try {
         const userRef = doc(db, 'users', user.id);
+        // Use Math.max to ensure we always keep the highest score
+        const newHighScore = Math.max(typingScore, userStats.bestWPM || 0);
         await updateDoc(userRef, {
           levelSpeed: increment(1),
-          highScoreSpeed: typingScore > userStats.bestWPM ? typingScore : userStats.bestWPM,
+          highScoreSpeed: newHighScore,
           gamesPlayed: increment(1)
         });
-        console.log('✅ Speed level updated in Firestore!');
+        console.log(`✅ Speed level updated in Firestore! Score: ${typingScore}, High Score: ${newHighScore}`);
         // Update local state
         setUserLevelSpeed(prev => prev + 1);
         if (typingScore > userStats.bestWPM) {
@@ -615,9 +617,10 @@ const GameScreen = () => {
           }
         }
 
-        // Word completed!
-        setTypingScore(typingScore + 1);
-        setQuizFeedback('🎉 WORD COMPLETED! +1 point');
+        // Word completed! Calculate points based on level (10 points base + 5 per level)
+        const pointsEarned = 10 + (userLevelSpeed * 5);
+        setTypingScore(typingScore + pointsEarned);
+        setQuizFeedback(`🎉 WORD COMPLETED! +${pointsEarned} points`);
 
         setTimeout(() => {
           // Move to next word
@@ -648,8 +651,10 @@ const GameScreen = () => {
         if (currentLetterIndex + 1 >= quizQuestion.word.length) {
           // Word completed! Increment to show the last letter first
           setCurrentLetterIndex(currentLetterIndex + 1);
-          setTypingScore(typingScore + 1);
-          setQuizFeedback('🎉 WORD COMPLETED! +1 point');
+          // Calculate points based on level (10 points base + 5 per level)
+          const pointsEarned = 10 + (userLevelSpeed * 5);
+          setTypingScore(typingScore + pointsEarned);
+          setQuizFeedback(`🎉 WORD COMPLETED! +${pointsEarned} points`);
 
           setTimeout(() => {
             // Move to next word

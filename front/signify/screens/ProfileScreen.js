@@ -175,7 +175,18 @@ const ProfileScreen = () => {
         {
           text: 'Sign Out',
           style: 'destructive',
-          onPress: signOut,
+          onPress: async () => {
+            try {
+              console.log('Attempting to sign out...');
+              await signOut();
+              console.log('Sign out successful');
+              // The app navigation will automatically handle the redirect
+              // due to isAuthenticated becoming false in AuthContext
+            } catch (error) {
+              console.error('Sign out error:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          },
         },
       ],
       { cancelable: true }

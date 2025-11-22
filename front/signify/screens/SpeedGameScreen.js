@@ -10,6 +10,7 @@ import { useThemedColors, useThemedShadow } from '../hooks/useThemedColors';
 import { NBIcon } from '../components/NeoBrutalistIcons';
 import SignDetectionManager from '../services/signDetection';
 import signConfig from '../config/signRecognition';
+import FrameCapture from '../utils/frameCapture';
 import {
   useButtonPressAnimation,
   useSuccessAnimation,
@@ -105,6 +106,10 @@ const SpeedGameScreen = ({
   const handleCameraReady = () => {
     console.log('Camera is ready!');
     setCameraReady(true);
+
+    // Notify FrameCapture that camera is ready
+    FrameCapture.setCameraReady(true);
+
     if (onCameraReady) onCameraReady();
 
     // Start sign detection when camera is ready
@@ -160,7 +165,9 @@ const SpeedGameScreen = ({
 
     // Cleanup on unmount
     return () => {
+      console.log('Cleaning up Speed Game screen');
       SignDetectionManager.stopDetection();
+      FrameCapture.setCameraReady(false);
     };
   }, []);
 
@@ -228,19 +235,19 @@ const SpeedGameScreen = ({
 
   if (!permission) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: themedColors.brutalWhite }]}>
-        <Text style={[styles.loadingText, { color: themedColors.brutalBlack }]}>Initializing camera...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: isDarkMode ? themedColors.brutalBackground : themedColors.brutalWhite }]}>
+        <Text style={[styles.loadingText, { color: themedColors.brutalText }]}>Initializing camera...</Text>
       </View>
     );
   }
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: themedColors.brutalWhite }]}>
-        <View style={styles.loadingContainer}>
-          <NBIcon name="Lightning" size={48} color={themedColors.brutalBlack} />
-          <Text style={[styles.loadingText, { color: themedColors.brutalBlack }]}>Camera permission is required</Text>
-          <Text style={[styles.loadingSubtext, { color: themedColors.brutalBlack }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: isDarkMode ? themedColors.brutalBackground : themedColors.brutalWhite }]}>
+        <View style={[styles.loadingContainer, { backgroundColor: isDarkMode ? themedColors.brutalBackground : themedColors.brutalWhite }]}>
+          <NBIcon name="Lightning" size={48} color={themedColors.brutalText} />
+          <Text style={[styles.loadingText, { color: themedColors.brutalText }]}>Camera permission is required</Text>
+          <Text style={[styles.loadingSubtext, { color: themedColors.brutalTextSecondary }]}>
             Please grant camera access to use SignSpeed
           </Text>
           <TouchableOpacity
@@ -286,7 +293,7 @@ const SpeedGameScreen = ({
   }
 
   return (
-    <View style={styles.quizFullScreen}>
+    <View style={[styles.quizFullScreen, isDarkMode && { backgroundColor: themedColors.brutalBackground }]}>
       {/* Camera View at Top (60% of screen) */}
       <View style={styles.cameraContainer}>
         <CameraView
@@ -368,7 +375,7 @@ const SpeedGameScreen = ({
       </View>
 
       {/* Bottom Content Area (40% of screen) */}
-      <View style={styles.bottomContentArea}>
+      <View style={[styles.bottomContentArea, isDarkMode && { backgroundColor: themedColors.brutalBackground }]}>
         {/* Timer Display - Compact */}
         <Animated.View
           style={[
@@ -622,6 +629,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora-Bold',
     color: colors.brutalWhite,
     marginTop: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
 
   // Camera Overlays

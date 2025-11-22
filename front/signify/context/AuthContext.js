@@ -166,12 +166,25 @@ export const AuthProvider = ({ children }) => {
 
   const signOut = async () => {
     try {
+      console.log('Starting sign out process...');
+
+      // Sign out from Firebase
       await firebaseSignOut(auth);
+      console.log('Firebase sign out successful');
+
+      // Clear local storage
       await AsyncStorage.removeItem('@user');
+      console.log('Local storage cleared');
+
+      // Clear user state
       setUser(null);
+      console.log('User state cleared');
+
+      return { success: true };
     } catch (error) {
       console.error('Error signing out:', error);
       Alert.alert('Error', 'Failed to sign out. Please try again.');
+      throw error; // Re-throw to let the caller handle it
     }
   };
 

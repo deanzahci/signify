@@ -5,6 +5,35 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
+// Approved word list for WORD mode only
+// Letter mode can use any letters
+const APPROVED_WORD_LIST = [
+  'actor', 'america', 'answer', 'any', 'arrogant', 'asia', 'austria', 'autumn',
+  'beard', 'bedroom', 'boy', 'boyfriend',
+  'cat', 'chef', 'chocolate', 'clock', 'come', 'corn', 'culture',
+  'dessert', 'disgusted', 'dry', 'dryer',
+  'early', 'ears', 'emotional', 'engineering',
+  'face', 'father', 'furniture',
+  'game', 'germany', 'glue', 'gone', 'graduate', 'gray',
+  'half hour', 'hashtag', 'hour',
+  'important', 'internet',
+  'jacket', 'janitor', 'jealous',
+  'last', 'later', 'light', 'list', 'lousy', 'love it',
+  'marry', 'mean', 'mix', 'my',
+  'newspaper', 'nosy', 'nuts',
+  'pencil', 'practice',
+  'ready', 'rich',
+  'screwdriver', 'shower', 'sign language', 'sit', 'sleepy', 'slow', 'sports', 'stand', 'stay',
+  'thank you', 'train', 'tuesday',
+  'uncle',
+  'what\'s up', 'wife', 'wow',
+  // Common greetings/words that are already in ASL
+  'good afternoon', 'every night', 'every week', 'last week'
+];
+
+// Convert to uppercase for consistency
+const APPROVED_WORDS_UPPER = APPROVED_WORD_LIST.map(word => word.toUpperCase());
+
 /**
  * Get OpenAI API key from secure storage
  * For production, this should be in a backend service
@@ -32,7 +61,7 @@ const getOpenAIKey = async () => {
 /**
  * Generate GPT prompt for word generation
  */
-const generateGPTPrompt = (level, struggleLetters, gameType) => {
+const generateGPTPrompt = (level, struggleLetters, gameType, isWordMode) => {
   const wordCount = level + 2; // Level number + 2 problems
 
   const struggleInfo = struggleLetters && (struggleLetters.high?.length > 0 || struggleLetters.medium?.length > 0)
@@ -41,6 +70,30 @@ const generateGPTPrompt = (level, struggleLetters, gameType) => {
 - Medium priority (use moderately): ${struggleLetters.medium?.join(', ') || 'none'}`
     : 'No specific letter focus needed.';
 
+  // For word mode, restrict to approved list
+  if (isWordMode) {
+    return `Select ${wordCount} words from this EXACT list for ASL practice at level ${level}:
+
+APPROVED WORDS LIST:
+${APPROVED_WORD_LIST.join(', ')}
+
+${struggleInfo}
+
+Requirements:
+1. You MUST ONLY use words from the provided list above
+2. Select words appropriate for level ${level} difficulty
+3. ${struggleLetters?.high?.length > 0 ? 'Prefer words containing struggle letters when possible' : 'Mix different difficulty levels'}
+4. Provide a simple, clear hint for each word
+5. Do NOT create or modify words - use them exactly as shown in the list
+
+Return ONLY a JSON array in this exact format, no other text:
+[
+  {"word": "ACTOR", "hint": "A person who performs in movies or plays"},
+  {"word": "CAT", "hint": "A small furry pet"}
+]`;
+  }
+
+  // For letter mode, allow any words
   return `Generate ${wordCount} ASL practice words for level ${level}.
 
 ${struggleInfo}
@@ -64,14 +117,19 @@ Return ONLY a JSON array in this exact format, no other text:
  */
 async function generateWordsWithGPT(level, struggleLetters, gameType = 'quiz') {
   try {
+    // Check if word mode is enabled
+    const savedMode = await AsyncStorage.getItem('detectionMode');
+    const isWordMode = savedMode === 'word';
+
     const apiKey = await getOpenAIKey();
     if (!apiKey) {
       console.log('No API key, falling back to default words');
-      return getDefaultWordsForLevel(level);
+      return getDefaultWordsForLevel(level, isWordMode);
     }
 
-    const prompt = generateGPTPrompt(level, struggleLetters, gameType);
+    const prompt = generateGPTPrompt(level, struggleLetters, gameType, isWordMode);
     console.log('GPT Prompt:', prompt);
+    console.log('Detection mode:', isWordMode ? 'word' : 'letter');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -108,21 +166,38 @@ async function generateWordsWithGPT(level, struggleLetters, gameType = 'quiz') {
       console.log('GPT generated words:', words);
 
       // Validate and format the words
-      const formattedWords = words.map(item => ({
+      let formattedWords = words.map(item => ({
         word: item.word.toUpperCase(),
         hint: item.hint || 'Practice this word'
       }));
 
+      // For word mode, validate that all words are from approved list
+      if (isWordMode) {
+        const validWords = formattedWords.filter(item =>
+          APPROVED_WORDS_UPPER.includes(item.word.toUpperCase())
+        );
+
+        if (validWords.length === 0) {
+          console.log('GPT generated invalid words for word mode, using fallback');
+          return getDefaultWordsForLevel(level, isWordMode);
+        }
+
+        formattedWords = validWords;
+        console.log('Validated words for word mode:', formattedWords);
+      }
+
       return formattedWords;
     } catch (parseError) {
       console.error('Error parsing GPT response:', parseError);
-      return getDefaultWordsForLevel(level);
+      return getDefaultWordsForLevel(level, isWordMode);
     }
 
   } catch (error) {
     console.error('GPT generation failed:', error);
     // Fallback to default words
-    return getDefaultWordsForLevel(level);
+    const savedMode = await AsyncStorage.getItem('detectionMode');
+    const isWordMode = savedMode === 'word';
+    return getDefaultWordsForLevel(level, isWordMode);
   }
 }
 
@@ -256,9 +331,11 @@ export async function quizGame(userUUID, userLevel) {
     console.error('Quiz game error:', error);
 
     // Fallback response
+    const savedMode = await AsyncStorage.getItem('detectionMode');
+    const isWordMode = savedMode === 'word';
     return {
       success: true,
-      words: getDefaultWordsForLevel(userLevel),
+      words: getDefaultWordsForLevel(userLevel, isWordMode),
       level: userLevel,
       timestamp: new Date().toISOString()
     };
@@ -303,7 +380,9 @@ export async function speedGame(userUUID, userLevel) {
     console.error('Speed game error:', error);
 
     // Fallback response
-    const fallbackWords = getDefaultWordsForLevel(userLevel);
+    const savedMode = await AsyncStorage.getItem('detectionMode');
+    const isWordMode = savedMode === 'word';
+    const fallbackWords = getDefaultWordsForLevel(userLevel, isWordMode);
     const timeLimit = Math.max(5, 10 - (userLevel - 1) * 2);
 
     const wordsWithTime = fallbackWords.map(item => ({
@@ -326,7 +405,143 @@ export async function speedGame(userUUID, userLevel) {
 /**
  * Default words for fallback (when GPT fails or no API key)
  */
-function getDefaultWordsForLevel(level) {
+function getDefaultWordsForLevel(level, isWordMode = false) {
+  // For word mode, use only approved words
+  if (isWordMode) {
+    const approvedWordBank = [
+      // Level 1 - Simple short words
+      { word: "CAT", hint: "A small furry pet" },
+      { word: "BOY", hint: "A young male" },
+      { word: "MY", hint: "Belonging to me" },
+      { word: "DRY", hint: "Not wet" },
+      { word: "WOW", hint: "Expression of surprise" },
+
+      // Level 2 - Medium length words
+      { word: "ACTOR", hint: "Performs in movies" },
+      { word: "BEARD", hint: "Facial hair" },
+      { word: "CHEF", hint: "Professional cook" },
+      { word: "CORN", hint: "Yellow vegetable" },
+      { word: "EARS", hint: "Used for hearing" },
+      { word: "FACE", hint: "Front of head" },
+      { word: "GAME", hint: "Fun activity" },
+      { word: "GLUE", hint: "Sticky substance" },
+      { word: "GONE", hint: "Not here anymore" },
+      { word: "GRAY", hint: "Color between black and white" },
+      { word: "HOUR", hint: "60 minutes" },
+      { word: "LAST", hint: "Final one" },
+      { word: "LIST", hint: "Items written down" },
+      { word: "MEAN", hint: "Not nice" },
+      { word: "NUTS", hint: "Tree seeds to eat" },
+      { word: "RICH", hint: "Having lots of money" },
+      { word: "SLOW", hint: "Not fast" },
+      { word: "STAY", hint: "Don't leave" },
+      { word: "WIFE", hint: "Married woman" },
+
+      // Level 3+ - Longer words
+      { word: "ANSWER", hint: "Response to a question" },
+      { word: "AUTUMN", hint: "Fall season" },
+      { word: "CLOCK", hint: "Tells time" },
+      { word: "DESSERT", hint: "Sweet after meal" },
+      { word: "DRYER", hint: "Machine that dries clothes" },
+      { word: "EARLY", hint: "Before expected time" },
+      { word: "FATHER", hint: "Male parent" },
+      { word: "JACKET", hint: "Outerwear" },
+      { word: "LATER", hint: "Not now" },
+      { word: "LIGHT", hint: "Brightness" },
+      { word: "LOUSY", hint: "Very bad" },
+      { word: "MARRY", hint: "Join in marriage" },
+      { word: "PENCIL", hint: "Writing tool" },
+      { word: "READY", hint: "Prepared" },
+      { word: "SHOWER", hint: "Wash with water" },
+      { word: "SLEEPY", hint: "Tired" },
+      { word: "SPORTS", hint: "Athletic activities" },
+      { word: "STAND", hint: "Be on feet" },
+      { word: "TRAIN", hint: "Railroad vehicle" },
+      { word: "UNCLE", hint: "Parent's brother" },
+
+      // Level 4+ - Complex words
+      { word: "AMERICA", hint: "United States country" },
+      { word: "ARROGANT", hint: "Too proud" },
+      { word: "AUSTRIA", hint: "European country" },
+      { word: "BEDROOM", hint: "Room for sleeping" },
+      { word: "BOYFRIEND", hint: "Male romantic partner" },
+      { word: "CHOCOLATE", hint: "Sweet brown treat" },
+      { word: "CULTURE", hint: "Society's customs" },
+      { word: "DISGUSTED", hint: "Feeling of revulsion" },
+      { word: "EMOTIONAL", hint: "Full of feelings" },
+      { word: "FURNITURE", hint: "Tables, chairs, etc." },
+      { word: "GERMANY", hint: "European country" },
+      { word: "GRADUATE", hint: "Complete school" },
+      { word: "HASHTAG", hint: "Social media symbol" },
+      { word: "IMPORTANT", hint: "Very significant" },
+      { word: "INTERNET", hint: "Global computer network" },
+      { word: "JANITOR", hint: "Building cleaner" },
+      { word: "JEALOUS", hint: "Envious feeling" },
+      { word: "NEWSPAPER", hint: "Daily news publication" },
+      { word: "NOSY", hint: "Too curious" },
+      { word: "PRACTICE", hint: "Repeated training" },
+      { word: "SCREWDRIVER", hint: "Tool for screws" },
+      { word: "TUESDAY", hint: "Day after Monday" },
+
+      // Multi-word phrases (use underscores for spaces in actual detection)
+      { word: "THANK YOU", hint: "Expression of gratitude" },
+      { word: "WHAT'S UP", hint: "Casual greeting" },
+      { word: "LOVE IT", hint: "Really like something" },
+      { word: "SIGN LANGUAGE", hint: "Visual communication" },
+      { word: "GOOD AFTERNOON", hint: "Midday greeting" },
+      { word: "EVERY NIGHT", hint: "Each evening" },
+      { word: "EVERY WEEK", hint: "Weekly occurrence" },
+      { word: "LAST WEEK", hint: "Previous seven days" },
+      { word: "HALF HOUR", hint: "30 minutes" },
+      { word: "ENGINEERING", hint: "Technical design field" },
+      { word: "ASIA", hint: "Large continent" }
+    ];
+
+    // Filter words by difficulty for the level
+    let filteredWords = [];
+
+    if (level <= 1) {
+      // Level 1: 3-4 letter words
+      filteredWords = approvedWordBank.filter(w =>
+        w.word.replace(/\s+/g, '').length <= 4 && !w.word.includes(' ')
+      );
+    } else if (level === 2) {
+      // Level 2: 4-5 letter words
+      filteredWords = approvedWordBank.filter(w => {
+        const len = w.word.replace(/\s+/g, '').length;
+        return len >= 4 && len <= 6 && !w.word.includes(' ');
+      });
+    } else if (level === 3) {
+      // Level 3: 5-7 letter words
+      filteredWords = approvedWordBank.filter(w => {
+        const len = w.word.replace(/\s+/g, '').length;
+        return len >= 5 && len <= 8 && !w.word.includes(' ');
+      });
+    } else if (level === 4) {
+      // Level 4: 7+ letter words
+      filteredWords = approvedWordBank.filter(w => {
+        const len = w.word.replace(/\s+/g, '').length;
+        return len >= 7 && !w.word.includes(' ');
+      });
+    } else {
+      // Level 5+: Include multi-word phrases
+      filteredWords = approvedWordBank.filter(w => {
+        const len = w.word.replace(/\s+/g, '').length;
+        return len >= 8 || w.word.includes(' ');
+      });
+    }
+
+    // If not enough words for the level, add some from adjacent levels
+    if (filteredWords.length < level + 2) {
+      filteredWords = approvedWordBank;
+    }
+
+    const numWords = level + 2;
+    const shuffled = [...filteredWords].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, Math.min(numWords, shuffled.length));
+  }
+
+  // For letter mode, use the original word bank (any words allowed)
   const wordsByDifficulty = {
     1: [
       { word: "HI", hint: "A casual greeting" },
