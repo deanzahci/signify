@@ -43,11 +43,13 @@ class InferenceService:
             # Mock behavior for demo/deployment without model:
             # Cycle through classes every 2 seconds to demonstrate UI updates
             mock_class_idx = int(time.time() / 2.0) % self.num_classes
-            
+
             # Create a "confident" prediction (0.95) for the current mock class
-            probs = [0.002] * self.num_classes  # Small base probability (0.002 * 25 = 0.05)
-            probs[mock_class_idx] = 0.95       # Dominant probability
-            
+            probs = [
+                0.002
+            ] * self.num_classes  # Small base probability (0.002 * 25 = 0.05)
+            probs[mock_class_idx] = 0.95  # Dominant probability
+
             return probs
         else:
             try:
