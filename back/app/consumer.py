@@ -62,6 +62,8 @@ class Consumer:
                 self.onnx_predictor.predict, landmarks
             )
 
+            self.logger.debug(f"Raw ONNX prediction: {predicted_letter} ({confidence:.4f})")
+
             self.metrics.record_inference()
 
             # 4. Optional: Apply smoothing to predictions over time
@@ -86,11 +88,14 @@ class Consumer:
             maxarg_letter, target_arg_prob = extract_metrics(
                 smoothed, self.state.current_target_letter
             )
+            
+            max_prob = max(smoothed) if smoothed else 0.0
 
             self.logger.info(
                 f"Inference result: {maxarg_letter} "
                 f"(target: {self.state.current_target_letter}, "
-                f"prob: {target_arg_prob:.3f})"
+                f"prob: {target_arg_prob:.3f}, "
+                f"max_prob: {max_prob:.3f})"
             )
 
             duration = time.time() - start_time
