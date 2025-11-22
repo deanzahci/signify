@@ -4,7 +4,17 @@ from collections import deque
 
 
 def index_to_char(index: int) -> str:
-    return chr(ord("A") + index)
+    """Convert class index to character, including special tokens."""
+    if 0 <= index <= 25:
+        return chr(ord("A") + index)
+    elif index == 26:
+        return "SPACE"
+    elif index == 27:
+        return "DELETE"
+    elif index == 28:
+        return "NOTHING"
+    else:
+        return "A"  # Fallback
 
 
 def char_to_index(char: str) -> int:
@@ -36,7 +46,7 @@ class PerformanceMetrics:
     """
     Track performance metrics for the pipeline.
     """
-    
+
     def __init__(self, window_size: int = 100):
         self.window_size = window_size
         self.frame_times = deque(maxlen=window_size)
@@ -45,20 +55,20 @@ class PerformanceMetrics:
         self.inference_count = 0
         self.error_count = 0
         self.start_time = time.time()
-    
+
     def record_frame_time(self, duration: float):
         self.frame_times.append(duration)
         self.processed_frames += 1
-    
+
     def record_dropped_frame(self):
         self.dropped_frames += 1
-    
+
     def record_inference(self):
         self.inference_count += 1
-    
+
     def record_error(self):
         self.error_count += 1
-    
+
     def get_stats(self) -> dict:
         if not self.frame_times:
             avg_time = 0.0
@@ -66,14 +76,14 @@ class PerformanceMetrics:
         else:
             avg_time = sum(self.frame_times) / len(self.frame_times)
             fps = 1.0 / avg_time if avg_time > 0 else 0.0
-        
+
         uptime = time.time() - self.start_time
         drop_rate = (
             self.dropped_frames / (self.dropped_frames + self.processed_frames)
             if (self.dropped_frames + self.processed_frames) > 0
             else 0.0
         )
-        
+
         return {
             "uptime_seconds": round(uptime, 2),
             "processed_frames": self.processed_frames,

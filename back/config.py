@@ -29,9 +29,9 @@ LSTM_HIDDEN_SIZE = 128
 LSTM_NUM_LAYERS = 2
 LSTM_NUM_CLASSES = 26
 
-ONNX_MODEL_PATH = BASE_DIR / "models" / "lstm_best_acc0.9946.onnx"
-ONNX_NUM_CLASSES = 26
-ONNX_SEQUENCE_LENGTH = 1
+ONNX_MODEL_PATH = BASE_DIR / "models" / "lstm_alphabet_sequence.onnx"
+ONNX_NUM_CLASSES = 29  # A-Z (0-25) + SPACE (26) + DELETE (27) + NOTHING (28)
+ONNX_SEQUENCE_LENGTH = 32  # LSTM requires 32-frame sequences
 
 THREAD_POOL_MAX_WORKERS = 4
 

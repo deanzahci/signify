@@ -104,6 +104,21 @@ class ONNXPredictor:
 
         return coords
 
+    def _flatten_landmarks(self, landmarks: np.ndarray) -> np.ndarray:
+        """
+        Flatten landmarks from (21, 3) to (63,) for model input.
+
+        Args:
+            landmarks: numpy array of shape (21, 3)
+
+        Returns:
+            Flattened array of shape (63,)
+        """
+        if landmarks.shape != (21, 3):
+            raise ValueError(f"Expected shape (21, 3), got {landmarks.shape}")
+
+        return landmarks.flatten()  # (21, 3) → (63,)
+
     def predict(self, landmarks: np.ndarray) -> Tuple[str, float]:
         """
         Run inference on single hand landmarks.
@@ -161,6 +176,153 @@ class ONNXPredictor:
             self.logger.error(f"Prediction failed: {e}", exc_info=True)
             # Return default on error
             return "A", 0.0
+
+    def predict_sequence(self, landmarks_sequence: np.ndarray) -> Tuple[str, float]:
+        """
+        Run inference on 32-frame sequence of hand landmarks.
+
+        Args:
+            landmarks_sequence: numpy array of shape (32, 21, 3) - 32 frames of single hand
+
+        Returns:
+            Tuple of (predicted_letter, confidence)
+            predicted_letter can be: A-Z, "SPACE", "DELETE", "NOTHING"
+        """
+        try:
+            # Validate input shape
+            if landmarks_sequence.shape != (32, 21, 3):
+                raise ValueError(
+                    f"Expected landmarks_sequence shape (32, 21, 3), got {landmarks_sequence.shape}"
+                )
+
+            # Mock mode for development/testing
+            if self.mock_mode:
+                import time
+
+                mock_class_idx = int(time.time() / 2.0) % self.num_classes
+                if mock_class_idx < 26:
+                    predicted_letter = chr(ord("A") + mock_class_idx)
+                elif mock_class_idx == 26:
+                    predicted_letter = "SPACE"
+                elif mock_class_idx == 27:
+                    predicted_letter = "DELETE"
+                else:
+                    predicted_letter = "NOTHING"
+                return predicted_letter, 0.95
+
+            # Apply normalization and flatten PER FRAME
+            normalized_flattened = []
+            for i in range(32):
+                # Normalize frame
+                normalized = self.normalize_landmarks(landmarks_sequence[i])
+                # Flatten from (21, 3) to (63,)
+                flattened = self._flatten_landmarks(normalized)
+                normalized_flattened.append(flattened)
+
+            # Stack to (32, 63)
+            sequence_array = np.stack(normalized_flattened, axis=0)
+
+            # Reshape for ONNX model: [batch=1, seq_len=32, features=63]
+            input_tensor = sequence_array.reshape(1, 32, 63).astype(np.float32)
+
+            self.logger.debug(f"Input tensor shape: {input_tensor.shape}")
+
+            # Run inference
+            outputs = self.session.run(
+                [self.output_name], {self.input_name: input_tensor}
+            )
+
+            # Get logits/probabilities
+            logits = outputs[0][0]  # Shape: (29,)
+
+            # Apply softmax
+            exp_logits = np.exp(logits - np.max(logits))
+            probs = exp_logits / np.sum(exp_logits)
+
+            # Get top prediction
+            top_idx = np.argmax(probs)
+            top_prob = probs[top_idx]
+
+            # Convert index to letter/special token (0-25=A-Z, 26=SPACE, 27=DELETE, 28=NOTHING)
+            if top_idx < 26:
+                predicted_letter = chr(ord("A") + top_idx)
+            elif top_idx == 26:
+                predicted_letter = "SPACE"
+            elif top_idx == 27:
+                predicted_letter = "DELETE"
+            elif top_idx == 28:
+                predicted_letter = "NOTHING"
+            else:
+                self.logger.warning(f"Unexpected class index: {top_idx}")
+                predicted_letter = "A"
+
+            self.logger.debug(
+                f"Prediction: {predicted_letter} (confidence: {top_prob:.4f})"
+            )
+
+            return predicted_letter, float(top_prob)
+
+        except Exception as e:
+            self.logger.error(f"Sequence prediction failed: {e}", exc_info=True)
+            return "A", 0.0
+
+    def predict_sequence_distribution(
+        self, landmarks_sequence: np.ndarray
+    ) -> np.ndarray:
+        """
+        Return full probability distribution over all classes for 32-frame sequence.
+
+        Args:
+            landmarks_sequence: numpy array of shape (32, 21, 3)
+
+        Returns:
+            numpy array of shape (29,) with probabilities for all classes
+        """
+        try:
+            if landmarks_sequence.shape != (32, 21, 3):
+                raise ValueError(
+                    f"Expected landmarks_sequence shape (32, 21, 3), got {landmarks_sequence.shape}"
+                )
+
+            # Mock mode
+            if self.mock_mode:
+                import time
+
+                mock_class_idx = int(time.time() / 2.0) % self.num_classes
+                probs = np.full(self.num_classes, 0.002, dtype=np.float32)
+                probs[mock_class_idx] = 0.95
+                return probs
+
+            # Apply normalization and flatten per frame
+            normalized_flattened = []
+            for i in range(32):
+                normalized = self.normalize_landmarks(landmarks_sequence[i])
+                flattened = self._flatten_landmarks(normalized)
+                normalized_flattened.append(flattened)
+
+            # Stack to (32, 63)
+            sequence_array = np.stack(normalized_flattened, axis=0)
+
+            # Reshape for ONNX model: [1, 32, 63]
+            input_tensor = sequence_array.reshape(1, 32, 63).astype(np.float32)
+
+            # Run inference
+            outputs = self.session.run(
+                [self.output_name], {self.input_name: input_tensor}
+            )
+
+            # Get probabilities
+            logits = outputs[0][0]
+            exp_logits = np.exp(logits - np.max(logits))
+            probs = exp_logits / np.sum(exp_logits)
+
+            return probs
+
+        except Exception as e:
+            self.logger.error(
+                f"Sequence distribution prediction failed: {e}", exc_info=True
+            )
+            return np.ones(self.num_classes, dtype=np.float32) / self.num_classes
 
     def predict_distribution(self, landmarks: np.ndarray) -> np.ndarray:
         """
