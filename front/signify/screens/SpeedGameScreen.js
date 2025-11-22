@@ -499,7 +499,7 @@ const SpeedGameScreen = ({
           <View style={[styles.currentSignPromptBottom, { paddingVertical: 6, marginVertical: 4, backgroundColor: themedColors.brutalPurple, borderColor: themedColors.brutalBlack }]}>
             <Text style={[styles.currentSignLabelBottom, { fontSize: 11, marginBottom: 2, color: themedColors.brutalWhite }]}>SIGN:</Text>
             <Text style={[styles.currentSignLetterBottom, { fontSize: 24, color: themedColors.brutalWhite }]}>
-              {quizQuestion.word[currentLetterIndex]}
+              {quizQuestion.word[currentLetterIndex] || ''}
             </Text>
           </View>
         )}
