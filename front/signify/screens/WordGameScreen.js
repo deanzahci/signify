@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import Animated, { FadeIn, FadeOut, ZoomIn, Layout } from 'react-native-reanimated';
 import { colors } from '../styles/colors';
+import { NBIcon } from '../components/NeoBrutalistIcons';
 import SignDetectionManager from '../services/signDetection';
 import signConfig from '../config/signRecognition';
 import {
@@ -13,6 +14,7 @@ import {
   usePulseAnimation,
   useFloatingAnimation
 } from '../utils/animations';
+import DetectionDisplay from '../components/DetectionDisplay';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -107,7 +109,7 @@ const WordGameScreen = ({
 
   // Trigger success animation on correct feedback
   useEffect(() => {
-    if (feedback && (feedback.includes('✅') || feedback.includes('🎉'))) {
+    if (feedback && (feedback.includes('[CHECK]') || feedback.includes('[SUCCESS]'))) {
       successAnim.trigger();
     }
   }, [feedback]);
@@ -212,12 +214,25 @@ const WordGameScreen = ({
             </View>
           )}
 
+          {/* Detection Display - Shows current detection and confidence */}
+          {cameraReady && (
+            <View style={styles.detectionDisplayContainer}>
+              <DetectionDisplay
+                isConnected={isConnected}
+                currentDetection={detectedWord}
+                confidence={currentConfidence}
+                targetValue={targetWord}
+                isCorrect={feedback && (feedback.includes('[CHECK]') || feedback.includes('[SUCCESS]'))}
+              />
+            </View>
+          )}
+
           {/* Feedback Overlay */}
           {feedback && (
             <Animated.View
               style={styles.feedbackOverlayCenter}
-              entering={ZoomIn.duration(300).springify()}
-              exiting={FadeOut.duration(500)}
+              entering={ZoomIn.duration(400).springify().damping(20).stiffness(120)}
+              exiting={FadeOut.duration(350)}
             >
               <Animated.View
                 style={[
@@ -225,15 +240,28 @@ const WordGameScreen = ({
                   successAnim.animatedStyle,
                   {
                     backgroundColor:
-                      feedback.includes('✅') || feedback.includes('🎉')
+                      feedback.includes('[CHECK]') || feedback.includes('[SUCCESS]')
                         ? colors.brutalGreen
-                        : feedback.includes('⏭️')
+                        : feedback.includes('[SKIP]')
                         ? colors.brutalYellow
                         : colors.brutalRed,
                   },
                 ]}
               >
-                <Text style={styles.feedbackOverlayText}>{feedback}</Text>
+                <View style={styles.feedbackContent}>
+                  {feedback.includes('[SUCCESS]') && (
+                    <NBIcon name="Celebrate" size={40} color={colors.brutalWhite} />
+                  )}
+                  {feedback.includes('[CHECK]') && (
+                    <NBIcon name="Check" size={40} color={colors.brutalWhite} />
+                  )}
+                  {feedback.includes('[SKIP]') && (
+                    <NBIcon name="Skip" size={40} color={colors.brutalWhite} />
+                  )}
+                  <Text style={styles.feedbackOverlayText}>
+                    {feedback.replace(/\[(SUCCESS|CHECK|SKIP)\]\s*/g, '')}
+                  </Text>
+                </View>
               </Animated.View>
             </Animated.View>
           )}
@@ -246,7 +274,7 @@ const WordGameScreen = ({
         <View style={styles.connectionStatus}>
           <View style={[styles.statusDot, { backgroundColor: isConnected ? colors.brutalGreen : colors.brutalYellow }]} />
           <Text style={styles.statusText}>
-            {isConnected ? '✓ AI Word Detection Active' : '⚡ Manual Mode'}
+            {isConnected ? 'AI Word Detection Active' : 'Manual Mode'}
           </Text>
         </View>
 
@@ -259,30 +287,6 @@ const WordGameScreen = ({
           <Text style={styles.targetWord}>{targetWord || 'Loading...'}</Text>
         </Animated.View>
 
-        {/* Confidence Meter */}
-        {isConnected && (
-          <View style={styles.confidenceContainer}>
-            <Text style={styles.confidenceLabel}>
-              CONFIDENCE: {(currentConfidence * 100).toFixed(0)}%
-            </Text>
-            <View style={styles.progressBarContainer}>
-              <View
-                style={[
-                  styles.progressBar,
-                  {
-                    width: `${currentConfidence * 100}%`,
-                    backgroundColor: currentConfidence >= 0.75 ? colors.brutalGreen : colors.brutalYellow
-                  }
-                ]}
-              />
-            </View>
-            {detectedWord && detectedWord !== targetWord && (
-              <Text style={styles.detectedWordText}>
-                Detecting: {detectedWord}
-              </Text>
-            )}
-          </View>
-        )}
 
         {/* Action Buttons */}
         <View style={styles.buttonContainer}>
@@ -310,7 +314,10 @@ const WordGameScreen = ({
               onPress={() => Alert.alert('Hint', `Try signing: ${targetWord.split('').join(' - ')}`)}
               entering={ZoomIn.duration(400).delay(300)}
             >
-              <Text style={styles.hintButtonText}>💡 HINT</Text>
+              <View style={styles.hintButtonContent}>
+                <NBIcon name="Help" size={20} />
+                <Text style={styles.hintButtonText}>HINT</Text>
+              </View>
             </AnimatedTouchableOpacity>
           )}
         </View>
@@ -441,6 +448,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: colors.brutalWhite,
+  },
+  detectionDisplayContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 100,
   },
   feedbackOverlayCenter: {
     position: 'absolute',
@@ -599,6 +614,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: colors.brutalBlack,
     textAlign: 'center',
+    marginLeft: 4,
+  },
+  hintButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  feedbackContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Floating score

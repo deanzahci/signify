@@ -12,6 +12,7 @@ import {
 import { colors } from '../styles/colors';
 import { ASL_HINTS, getProgressiveHint } from '../data/aslHints';
 import { ASLIcon } from './ASLIcons';
+import { NBIcon } from './NeoBrutalistIcons';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -99,7 +100,7 @@ export const HintButton = ({
       ]}
     >
       <TouchableOpacity onPress={onPress} style={styles.hintButtonInner}>
-        <Text style={styles.hintButtonEmoji}>💡</Text>
+        <NBIcon name="Help" size={32} />
         {isStruggling && attemptsCount > 2 && (
           <View style={styles.hintBadge}>
             <Text style={styles.hintBadgeText}>!</Text>
@@ -191,16 +192,18 @@ export const HintModal = ({
 
   useEffect(() => {
     if (visible) {
+      // Smoother entrance with controlled spring
       Animated.spring(scaleAnim, {
         toValue: 1,
-        tension: 50,
-        friction: 8,
+        damping: 20,
+        stiffness: 120,
         useNativeDriver: true,
       }).start();
     } else {
+      // Faster exit for cleaner feel
       Animated.timing(scaleAnim, {
-        toValue: 0,
-        duration: 200,
+        toValue: 0.95,
+        duration: 250,
         useNativeDriver: true,
       }).start();
     }

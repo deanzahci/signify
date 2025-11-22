@@ -31,7 +31,7 @@ class SignLanguageWebSocket {
   connect(url, callbacks = {}) {
     this.wsUrl = url || 'wss://signify-production-8eb6.up.railway.app';
     this.callbacks = { ...this.callbacks, ...callbacks };
-    console.log('📡 WebSocket Service: Attempting connection to:', this.wsUrl);
+    console.log(' WebSocket Service: Attempting connection to:', this.wsUrl);
 
     // Mark that we've attempted connection
     this.connectionAttempted = true;

@@ -249,7 +249,7 @@ const GameScreen = () => {
 
     if (availableWords.length === 0) {
       // Level completed - all words used, move to next level
-      setQuizFeedback('🎉 LEVEL COMPLETED! Moving to next level...');
+      setQuizFeedback('[SUCCESS] LEVEL COMPLETED! Moving to next level...');
       setQuizGameActive(false);
       updateQuizLevelInFirestore();
 
@@ -292,7 +292,7 @@ const GameScreen = () => {
 
   const skipQuizQuestion = async () => {
     setQuizRound(quizRound + 1);
-    setQuizFeedback('⏭️ SKIPPED');
+    setQuizFeedback('[SKIP] SKIPPED');
 
     // Track the skipped letter as a struggle
     if (quizQuestion && user?.id) {
@@ -310,7 +310,7 @@ const GameScreen = () => {
       // Level completed - all words used
       setQuizGameActive(false);
       setTimeout(() => {
-        setQuizFeedback('🎉 LEVEL COMPLETED! Moving to next level...');
+        setQuizFeedback('[SUCCESS] LEVEL COMPLETED! Moving to next level...');
         updateQuizLevelInFirestore();
         // After a delay, restart with next level
         setTimeout(() => {
@@ -364,7 +364,7 @@ const GameScreen = () => {
         const allLetters = quizQuestion.word.split('');
         setSignedLetters(allLetters);
         setCurrentLetterIndex(quizQuestion.word.length); // Set to end
-        setQuizFeedback(`✅ Word Detected: ${quizQuestion.word}`);
+        setQuizFeedback(`[CHECK] Word Detected: ${quizQuestion.word}`);
 
         // Track successful word detection
         if (user?.id) {
@@ -376,7 +376,7 @@ const GameScreen = () => {
         // Word completed!
         setTimeout(() => {
           setQuizScore(quizScore + 10);
-          setQuizFeedback('🎉 CORRECT! +10 points');
+          setQuizFeedback('[SUCCESS] CORRECT! +10 points');
           setQuizRound(quizRound + 1);
 
           // Check if there are more words in this level
@@ -399,7 +399,7 @@ const GameScreen = () => {
         const currentLetter = quizQuestion.word[currentLetterIndex];
         const newSignedLetters = [...signedLetters, currentLetter];
         setSignedLetters(newSignedLetters);
-        setQuizFeedback(`✅ Detected: ${currentLetter}`);
+        setQuizFeedback(`[CHECK] Detected: ${currentLetter}`);
 
         // Track successful letter detection
         if (user?.id) {
@@ -414,7 +414,7 @@ const GameScreen = () => {
           // Then wait a moment to show the last letter before success message
           setTimeout(() => {
             setQuizScore(quizScore + 10);
-            setQuizFeedback('🎉 CORRECT! +10 points');
+            setQuizFeedback('[SUCCESS] CORRECT! +10 points');
             setQuizRound(quizRound + 1);
 
             // Check if there are more words in this level
@@ -535,7 +535,7 @@ const GameScreen = () => {
       setCurrentLetterIndex(0);
       setSignedLetters([]);
       setQuizQuestion(typingWords[currentWordIndex + 1]);
-      setQuizFeedback('⏭️ SKIPPED');
+      setQuizFeedback('[SKIP] SKIPPED');
       setTimeout(() => {
         setQuizFeedback('');
       }, 1000);
@@ -558,7 +558,7 @@ const GameScreen = () => {
   // Handle all words completed in speed game
   const handleAllWordsCompleted = () => {
     setTypingGameActive(false);
-    setQuizFeedback('🎉 ALL WORDS COMPLETED! Moving to next level...');
+    setQuizFeedback('[SUCCESS] ALL WORDS COMPLETED! Moving to next level...');
     updateSpeedLevelInFirestore();
 
     // After a delay, restart with next level
@@ -608,7 +608,7 @@ const GameScreen = () => {
         const allLetters = quizQuestion.word.split('');
         setSignedLetters(allLetters);
         setCurrentLetterIndex(quizQuestion.word.length); // Set to end
-        setQuizFeedback(`✅ Word Detected: ${quizQuestion.word}`);
+        setQuizFeedback(`[CHECK] Word Detected: ${quizQuestion.word}`);
 
         // Track successful word detection
         if (user?.id) {
@@ -620,7 +620,7 @@ const GameScreen = () => {
         // Word completed! Calculate points based on level (10 points base + 5 per level)
         const pointsEarned = 10 + (userLevelSpeed * 5);
         setTypingScore(typingScore + pointsEarned);
-        setQuizFeedback(`🎉 WORD COMPLETED! +${pointsEarned} points`);
+        setQuizFeedback(`[SUCCESS] WORD COMPLETED! +${pointsEarned} points`);
 
         setTimeout(() => {
           // Move to next word
@@ -640,7 +640,7 @@ const GameScreen = () => {
         const currentLetter = quizQuestion.word[currentLetterIndex];
         const newSignedLetters = [...signedLetters, currentLetter];
         setSignedLetters(newSignedLetters);
-        setQuizFeedback(`✅ Detected: ${currentLetter}`);
+        setQuizFeedback(`[CHECK] Detected: ${currentLetter}`);
 
         // Track successful letter detection
         if (user?.id) {
@@ -654,7 +654,7 @@ const GameScreen = () => {
           // Calculate points based on level (10 points base + 5 per level)
           const pointsEarned = 10 + (userLevelSpeed * 5);
           setTypingScore(typingScore + pointsEarned);
-          setQuizFeedback(`🎉 WORD COMPLETED! +${pointsEarned} points`);
+          setQuizFeedback(`[SUCCESS] WORD COMPLETED! +${pointsEarned} points`);
 
           setTimeout(() => {
             // Move to next word

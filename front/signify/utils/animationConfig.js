@@ -2,84 +2,109 @@
 // All animations should follow these standardized timings for consistency
 
 export const ANIMATION_CONFIG = {
-  // Standard durations
+  // Standard durations - slightly slower for smoother feel
   durations: {
-    fast: 200,      // Quick transitions
-    normal: 300,    // Standard transitions
-    medium: 400,    // Medium emphasis
-    slow: 500,      // Slower, more deliberate
-    emphasis: 600,  // Strong emphasis animations
+    instant: 150,   // Very quick transitions
+    fast: 250,      // Quick transitions
+    normal: 350,    // Standard transitions
+    medium: 450,    // Medium emphasis
+    slow: 550,      // Slower, more deliberate
+    emphasis: 700,  // Strong emphasis animations
+    smooth: 800,    // Very smooth, deliberate animations
   },
 
   // Standard delays for staggered animations
   delays: {
     none: 0,
-    quick: 100,
-    normal: 200,
-    medium: 300,
-    long: 400,
-    stagger: 50,   // Per-item stagger delay
+    quick: 50,
+    normal: 150,
+    medium: 250,
+    long: 350,
+    stagger: 60,   // Per-item stagger delay - slightly longer for smoother effect
   },
 
-  // Spring animations for neo-brutalist bounce
+  // Spring animations for smoother, more polished bounce
   spring: {
-    damping: 15,
-    stiffness: 150,
-    mass: 1,
+    damping: 18,    // Increased for less bouncy, more controlled motion
+    stiffness: 120, // Decreased for softer spring effect
+    mass: 1.2,      // Slightly heavier for more natural motion
   },
 
   // Common animation patterns
   patterns: {
-    // Enter animations
+    // Enter animations - smoother with easing
     fadeIn: {
-      duration: 300,
-      delay: 200,
+      duration: 350,
+      delay: 100,
+      easing: 'ease-out',
     },
     zoomIn: {
-      duration: 400,
-      delay: 300,
+      duration: 450,
+      delay: 150,
       springify: true,
+      initialScale: 0.85,  // Start from slightly visible for smoother entrance
     },
     slideIn: {
-      duration: 400,
-      delay: 200,
+      duration: 450,
+      delay: 100,
+      easing: 'ease-out',
     },
 
-    // Exit animations
+    // Exit animations - faster for cleaner feel
     fadeOut: {
-      duration: 500,
+      duration: 350,
       delay: 0,
+      easing: 'ease-in',
     },
     zoomOut: {
-      duration: 300,
+      duration: 250,
       delay: 0,
+      finalScale: 0.9,  // Don't shrink all the way for smoother exit
     },
 
-    // Button press
+    // Button press - subtle but responsive
     buttonPress: {
-      scaleDown: 0.95,
-      duration: 100,
+      scaleDown: 0.97,  // Less dramatic scale for cleaner feel
+      duration: 80,
+      easing: 'ease-out',
     },
 
-    // Success/feedback
+    // Success/feedback - controlled celebration
     success: {
-      scale: 1.1,
-      duration: 300,
-      springify: true,
-    },
-
-    // Pulse/heartbeat
-    pulse: {
-      scale: 1.05,
-      duration: 500,
-      repeat: true,
-    },
-
-    // Timer warning pulse
-    timerWarning: {
-      scale: 1.08,
+      scale: 1.08,  // Slightly less dramatic
       duration: 400,
+      springify: true,
+      damping: 20,  // More controlled bounce
+    },
+
+    // Pulse/heartbeat - smooth breathing effect
+    pulse: {
+      scale: 1.04,  // More subtle
+      duration: 600,
       repeat: true,
+      easing: 'ease-in-out',
+    },
+
+    // Timer warning pulse - urgent but not jarring
+    timerWarning: {
+      scale: 1.06,
+      duration: 450,
+      repeat: true,
+      easing: 'ease-in-out',
+    },
+
+    // Modal/popup animations - smooth and elegant
+    modalEnter: {
+      duration: 400,
+      initialScale: 0.92,
+      springify: true,
+      damping: 22,
+      stiffness: 100,
+    },
+    modalExit: {
+      duration: 300,
+      finalScale: 0.95,
+      easing: 'ease-in',
     },
   },
 };

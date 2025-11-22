@@ -36,7 +36,7 @@ class SignDetectionManager {
   initialize(wsUrl, callbacks = {}) {
     this.callbacks = { ...this.callbacks, ...callbacks };
 
-    console.log('🚀 Sign Detection: Attempting to connect to backend');
+    console.log('Sign Detection: Attempting to connect to backend');
 
     // Setup WebSocket connection
     WebSocketService.connect(wsUrl, {
@@ -66,7 +66,7 @@ class SignDetectionManager {
     this.consecutiveDetections = 0;
     this.isActive = true;
 
-    console.log('🎯 Starting sign detection for letter:', targetLetter);
+    console.log(' Starting sign detection for letter:', targetLetter);
     console.log('📊 Detection settings:', {
       confidenceThreshold: this.confidenceThreshold,
       requiredConsecutiveDetections: this.requiredConsecutiveDetections
@@ -109,7 +109,7 @@ class SignDetectionManager {
     this.consecutiveDetections = 0;
     this.isActive = true;
 
-    console.log('🎯 Starting sign detection for word:', targetWord);
+    console.log(' Starting sign detection for word:', targetWord);
     console.log('📊 Detection settings:', {
       confidenceThreshold: this.confidenceThreshold,
       requiredConsecutiveDetections: this.requiredConsecutiveDetections
@@ -233,7 +233,7 @@ class SignDetectionManager {
     if (detectedValue === this.currentTargetLetter && confidence >= this.confidenceThreshold) {
       if (detectedValue === this.lastDetectedLetter) {
         this.consecutiveDetections++;
-        console.log(`✓ Consecutive detection ${this.consecutiveDetections}/${this.requiredConsecutiveDetections}`);
+        console.log(` Consecutive detection ${this.consecutiveDetections}/${this.requiredConsecutiveDetections}`);
       } else {
         this.consecutiveDetections = 1;
         this.lastDetectedLetter = detectedValue;
@@ -241,7 +241,7 @@ class SignDetectionManager {
 
       // Check if we have enough consecutive detections
       if (this.consecutiveDetections >= this.requiredConsecutiveDetections) {
-        console.log('✅ Letter detected successfully:', this.currentTargetLetter);
+        console.log(' Letter detected successfully:', this.currentTargetLetter);
 
         if (this.callbacks.onLetterDetected) {
           this.callbacks.onLetterDetected(this.currentTargetLetter);
@@ -285,7 +285,7 @@ class SignDetectionManager {
     if (detectedValue === this.currentTargetWord && confidence >= this.confidenceThreshold) {
       if (detectedValue === this.lastDetectedWord) {
         this.consecutiveDetections++;
-        console.log(`✓ Consecutive word detection ${this.consecutiveDetections}/${this.requiredConsecutiveDetections}`);
+        console.log(` Consecutive word detection ${this.consecutiveDetections}/${this.requiredConsecutiveDetections}`);
       } else {
         this.consecutiveDetections = 1;
         this.lastDetectedWord = detectedValue;
@@ -293,7 +293,7 @@ class SignDetectionManager {
 
       // Check if we have enough consecutive detections
       if (this.consecutiveDetections >= this.requiredConsecutiveDetections) {
-        console.log('✅ Word detected successfully:', this.currentTargetWord);
+        console.log(' Word detected successfully:', this.currentTargetWord);
 
         if (this.callbacks.onWordDetected) {
           this.callbacks.onWordDetected(this.currentTargetWord);
@@ -316,7 +316,7 @@ class SignDetectionManager {
    * Handle WebSocket connection established
    */
   handleConnectionEstablished() {
-    console.log('✅ Sign detection connected to backend');
+    console.log(' Sign detection connected to backend');
     this.wsConnected = true;
 
     if (this.callbacks.onConnectionChange) {
@@ -338,7 +338,7 @@ class SignDetectionManager {
    */
   handleConnectionLost() {
     if (this.wsConnected) {
-      console.log('⚠️ Backend disconnected - Using manual sign detection');
+      console.log(' Backend disconnected - Using manual sign detection');
     }
     this.wsConnected = false;
 
@@ -353,7 +353,7 @@ class SignDetectionManager {
   handleConnectionError(error) {
     // Silently handle error - backend not available
     if (!this.wsConnected) {
-      console.log('ℹ️ Using manual detection mode (backend not available)');
+      console.log(' Using manual detection mode (backend not available)');
     }
   }
 

@@ -254,6 +254,89 @@ export const NeoBrutalistIcons = {
         </G>
       </Svg>
     );
+  },
+
+  // Help/Lightbulb icon for hint button
+  Help: ({ size = 24, color = null }) => {
+    const themedColors = useThemedColors();
+    const fillColor = color || themedColors.brutalYellow;
+
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M9 18H15V20C15 21 14 22 12 22C10 22 9 21 9 20V18Z"
+          stroke={fillColor}
+          strokeWidth="3"
+          strokeLinecap="square"
+          strokeLinejoin="miter"
+          fill="none"
+        />
+        <Path
+          d="M9 18C7 17 5 15 5 12C5 8 8 5 12 5C16 5 19 8 19 12C19 15 17 17 15 18"
+          stroke={fillColor}
+          strokeWidth="3"
+          strokeLinecap="square"
+          strokeLinejoin="miter"
+          fill="none"
+        />
+        <Line x1="10" y1="20" x2="14" y2="20" stroke={fillColor} strokeWidth="2" />
+        <Circle cx="12" cy="12" r="2" fill={fillColor} />
+      </Svg>
+    );
+  },
+
+  // Skip icon for skip button
+  Skip: ({ size = 24, color = null }) => {
+    const themedColors = useThemedColors();
+    const fillColor = color || themedColors.brutalBlack;
+
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+          d="M5 5V19L17 12L5 5Z"
+          stroke={fillColor}
+          strokeWidth="3"
+          strokeLinecap="square"
+          strokeLinejoin="miter"
+          fill="none"
+        />
+        <Line x1="19" y1="5" x2="19" y2="19" stroke={fillColor} strokeWidth="3" strokeLinecap="square" />
+      </Svg>
+    );
+  },
+
+  // Celebration/Success icon
+  Celebrate: ({ size = 24, color = null }) => {
+    const themedColors = useThemedColors();
+    const fillColor = color || themedColors.brutalGreen;
+
+    return (
+      <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Rect x="3" y="15" width="6" height="6" rx="1"
+          stroke={fillColor}
+          strokeWidth="3"
+          strokeLinecap="square"
+          fill="none"
+        />
+        <Rect x="15" y="15" width="6" height="6" rx="1"
+          stroke={fillColor}
+          strokeWidth="3"
+          strokeLinecap="square"
+          fill="none"
+        />
+        <Path
+          d="M9 15C9 15 10 10 12 10C14 10 15 15 15 15"
+          stroke={fillColor}
+          strokeWidth="2"
+          strokeLinecap="square"
+        />
+        <Circle cx="6" cy="5" r="1" fill={fillColor} />
+        <Circle cx="18" cy="5" r="1" fill={fillColor} />
+        <Circle cx="12" cy="3" r="1" fill={fillColor} />
+        <Circle cx="4" cy="10" r="1" fill={fillColor} />
+        <Circle cx="20" cy="10" r="1" fill={fillColor} />
+      </Svg>
+    );
   }
 };
 

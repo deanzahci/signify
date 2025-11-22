@@ -19,6 +19,7 @@ import {
 import { HintButton, QuickHint, HintModal, MiniHint } from '../components/HintSystem';
 import { updateLetterStats } from '../utils/gameApi';
 import { auth } from '../config/firebase';
+import DetectionDisplay from '../components/DetectionDisplay';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -358,12 +359,25 @@ const QuizGameScreen = ({
             </View>
           )}
 
+          {/* Detection Display - Shows current detection and confidence */}
+          {cameraReady && (
+            <View style={styles.detectionDisplayContainer}>
+              <DetectionDisplay
+                isConnected={isConnected}
+                currentDetection={detectedValue}
+                confidence={currentConfidence}
+                targetValue={isWordMode ? quizQuestion?.word : quizQuestion?.word?.[currentLetterIndex]}
+                isCorrect={quizFeedback && (quizFeedback.includes('[CHECK]') || quizFeedback.includes('[SUCCESS]'))}
+              />
+            </View>
+          )}
+
           {/* Feedback Message Overlay on Camera */}
           {quizFeedback && (
             <Animated.View
               style={styles.feedbackOverlayCenter}
-              entering={ZoomIn.duration(300).springify()}
-              exiting={FadeOut.duration(500)}
+              entering={ZoomIn.duration(400).springify().damping(20).stiffness(120)}
+              exiting={FadeOut.duration(350)}
             >
               <Animated.View
                 style={[
@@ -371,9 +385,9 @@ const QuizGameScreen = ({
                   successAnim.animatedStyle,
                   {
                     backgroundColor:
-                      quizFeedback.includes('✅') || quizFeedback.includes('🎉')
+                      quizFeedback.includes('[CHECK]') || quizFeedback.includes('[SUCCESS]')
                         ? themedColors.brutalGreen
-                        : quizFeedback.includes('⏭️')
+                        : quizFeedback.includes('[SKIP]')
                         ? themedColors.brutalYellow
                         : themedColors.brutalRed,
                     borderColor: themedColors.brutalBlack,
@@ -381,7 +395,20 @@ const QuizGameScreen = ({
                   },
                 ]}
               >
-                <Text style={styles.feedbackOverlayText}>{quizFeedback}</Text>
+                <View style={styles.feedbackContent}>
+                  {quizFeedback.includes('[SUCCESS]') && (
+                    <NBIcon name="Celebrate" size={40} color={themedColors.brutalWhite} />
+                  )}
+                  {quizFeedback.includes('[CHECK]') && (
+                    <NBIcon name="Check" size={40} color={themedColors.brutalWhite} />
+                  )}
+                  {quizFeedback.includes('[SKIP]') && (
+                    <NBIcon name="Skip" size={40} color={themedColors.brutalWhite} />
+                  )}
+                  <Text style={styles.feedbackOverlayText}>
+                    {quizFeedback.replace(/\[(SUCCESS|CHECK|SKIP)\]\s*/g, '')}
+                  </Text>
+                </View>
               </Animated.View>
             </Animated.View>
           )}
@@ -662,6 +689,14 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora-Bold',
     color: colors.brutalWhite,
   },
+  detectionDisplayContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 100,
+  },
   feedbackOverlayCenter: {
     position: 'absolute',
     top: '40%',
@@ -685,6 +720,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Sora-Bold',
     color: colors.brutalWhite,
     textAlign: 'center',
+  },
+  feedbackContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   // Bottom Content Area
