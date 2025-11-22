@@ -137,8 +137,11 @@ const SpeedGameScreen = ({
     SignDetectionManager.initialize(signConfig.websocket.url, {
       onLetterDetected: (letter) => {
         console.log('Letter detected in Speed Game:', letter);
-        // Call the original simulate detection to advance the game
-        if (!isWordMode && onSimulateDetection) {
+        // Use the actual detected letter
+        if (!isWordMode && props.onLetterDetected) {
+          props.onLetterDetected(letter);
+        } else if (!isWordMode && onSimulateDetection) {
+          // Fallback to simulation if no letter handler provided
           onSimulateDetection();
         }
       },
@@ -162,7 +165,7 @@ const SpeedGameScreen = ({
     // Configure detection settings for speed game (faster detection)
     SignDetectionManager.updateConfig({
       confidenceThreshold: 0.7, // Lower threshold for faster gameplay
-      requiredConsecutiveDetections: 2, // Fewer detections needed
+      requiredConsecutiveDetections: 1, // Immediate detection
       debugMode: signConfig.debug.enabled
     });
 

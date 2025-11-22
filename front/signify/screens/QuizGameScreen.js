@@ -137,8 +137,11 @@ const QuizGameScreen = ({
       SignDetectionManager.initialize(signConfig.websocket.url, {
         onLetterDetected: (letter) => {
           console.log('Letter detected in Quiz:', letter);
-          // In letter mode, advance to next letter
-          if (mode !== 'word' && onSimulateDetection) {
+          // In letter mode, use the actual detected letter
+          if (mode !== 'word' && props.onLetterDetected) {
+            props.onLetterDetected(letter);
+          } else if (mode !== 'word' && onSimulateDetection) {
+            // Fallback to simulation if no letter handler provided
             onSimulateDetection();
           }
         },

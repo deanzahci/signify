@@ -347,6 +347,53 @@ const GameScreen = () => {
     }
   };
 
+  // Handle actual letter detection for Quiz Mode
+  const handleQuizLetterDetected = async (detectedLetter) => {
+    if (!quizQuestion || isDetecting || !quizGameActive) return;
+
+    // Check if the detected letter matches the expected letter
+    const expectedLetter = quizQuestion.word[currentLetterIndex];
+    if (detectedLetter !== expectedLetter) {
+      return;
+    }
+
+    setIsDetecting(true);
+
+    // Add the detected letter to signed letters
+    const newSignedLetters = [...signedLetters, detectedLetter];
+    setSignedLetters(newSignedLetters);
+    setQuizFeedback(`✓ Detected: ${detectedLetter}`);
+
+    // Track successful letter detection
+    if (user?.id) {
+      await updateLetterStats(user.id, detectedLetter, 'success');
+    }
+
+    // Check if word is complete
+    if (currentLetterIndex + 1 >= quizQuestion.word.length) {
+      // Word completed!
+      setCurrentLetterIndex(currentLetterIndex + 1);
+      setQuizScore(quizScore + 10);
+      setQuizFeedback('✅ CORRECT! +10 points');
+      setQuizRound(quizRound + 1);
+
+      setTimeout(() => {
+        generateQuizQuestion();
+        setCurrentLetterIndex(0);
+        setSignedLetters([]);
+        setQuizFeedback('');
+      }, 1500);
+    } else {
+      // Move to next letter
+      setCurrentLetterIndex(currentLetterIndex + 1);
+      setTimeout(() => {
+        setQuizFeedback('');
+      }, 1000);
+    }
+
+    setIsDetecting(false);
+  };
+
   // Simulate sign detection for Quiz Mode
   const simulateQuizSignDetection = async () => {
     if (!quizQuestion || isDetecting || !quizGameActive) return;
@@ -591,6 +638,61 @@ const GameScreen = () => {
     }
   };
 
+  // Handle actual letter detection for Speed Mode
+  const handleSpeedLetterDetected = async (detectedLetter) => {
+    if (!quizQuestion || isDetecting || !typingGameActive) return;
+
+    // Check if the detected letter matches the expected letter
+    const expectedLetter = quizQuestion.word[currentLetterIndex];
+    if (detectedLetter !== expectedLetter) {
+      return;
+    }
+
+    setIsDetecting(true);
+
+    // Add the detected letter to signed letters
+    const newSignedLetters = [...signedLetters, detectedLetter];
+    setSignedLetters(newSignedLetters);
+    setQuizFeedback(`✓ Detected: ${detectedLetter}`);
+
+    // Track successful letter detection
+    if (user?.id) {
+      await updateLetterStats(user.id, detectedLetter, 'success');
+    }
+
+    // Check if word is complete
+    if (currentLetterIndex + 1 >= quizQuestion.word.length) {
+      // Word completed!
+      setCurrentLetterIndex(currentLetterIndex + 1);
+      // Calculate points based on level (10 points base + 5 per level)
+      const pointsEarned = 10 + (userLevelSpeed * 5);
+      setTypingScore(typingScore + pointsEarned);
+      setQuizFeedback(`✅ WORD COMPLETED! +${pointsEarned} points`);
+
+      setTimeout(() => {
+        // Move to next word
+        if (currentWordIndex < typingWords.length - 1) {
+          setCurrentWordIndex(currentWordIndex + 1);
+          setCurrentLetterIndex(0);
+          setSignedLetters([]);
+          setQuizQuestion(typingWords[currentWordIndex + 1]);
+          setQuizFeedback('');
+        } else {
+          // Finished all words before timer
+          handleAllWordsCompleted();
+        }
+      }, 1500);
+    } else {
+      // Move to next letter
+      setCurrentLetterIndex(currentLetterIndex + 1);
+      setTimeout(() => {
+        setQuizFeedback('');
+      }, 1000);
+    }
+
+    setIsDetecting(false);
+  };
+
   // Simulate sign detection for SignSpeed mode
   const simulateSignDetection = async () => {
     if (!quizQuestion || isDetecting || !typingGameActive) return;
@@ -733,6 +835,7 @@ const GameScreen = () => {
           onExitQuiz={exitQuizMode}
           onSkipQuestion={skipQuizQuestion}
           onSimulateDetection={simulateQuizSignDetection}
+          onLetterDetected={handleQuizLetterDetected}
           onCameraReady={onCameraReady}
         />
       );
@@ -768,6 +871,7 @@ const GameScreen = () => {
           onExitTyping={exitTypingMode}
           onSkipWord={skipWord}
           onSimulateDetection={simulateSignDetection}
+          onLetterDetected={handleSpeedLetterDetected}
           onCameraReady={onCameraReady}
           onTimerEnd={handleTypingTimerEnd}
           onAllWordsCompleted={handleAllWordsCompleted}

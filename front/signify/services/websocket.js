@@ -87,16 +87,20 @@ class SignLanguageWebSocket {
     this.ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        // Support both letter and word detection
-        const detectedValue = data.maxarg_word || data.maxarg_letter;
-        console.log('📥 Sign detected:', {
-          value: detectedValue,
-          type: data.maxarg_word ? 'word' : 'letter',
-          confidence: `${(data.target_arg_prob * 100).toFixed(1)}%`
-        });
+
+        // Map the actual backend response fields to what the frontend expects
+        // Backend sends: detected_word_letter, target_word_prob, target_lettr_prob
+        // Frontend expects: maxarg_letter/maxarg_word, target_arg_prob
+
+        const mappedData = {
+          maxarg_letter: data.detected_word_letter,
+          maxarg_word: data.detected_word_letter, // Same value for both
+          target_arg_prob: data.target_lettr_prob || data.target_word_prob || 0
+        };
 
         if (this.callbacks.onMessage) {
-          this.callbacks.onMessage(data);
+          // Pass the mapped data to callbacks so the UI gets the expected format
+          this.callbacks.onMessage(mappedData);
         }
       } catch (error) {
         console.error('❌ Error parsing WebSocket message:', error);
@@ -152,32 +156,25 @@ class SignLanguageWebSocket {
     }
 
     try {
-      // The backend expects the raw JPEG blob data
-      // Since we can't send a Blob directly in JSON, we need to send it as binary
+      // Convert blob to base64 string for JSON transmission
+      let base64Data;
+
       if (jpegBlob instanceof Blob) {
-        // Option 1: Send as binary WebSocket message (if backend supports it)
-        // this.ws.send(jpegBlob);
-
-        // Option 2: Convert to ArrayBuffer and send as binary
-        const arrayBuffer = await jpegBlob.arrayBuffer();
-        const uint8Array = new Uint8Array(arrayBuffer);
-
-        // Create a message with metadata and binary data
-        const payload = {
-          jpeg_blob: Array.from(uint8Array), // Convert to array for JSON
-          new_letter: newLetter
-        };
-
-        this.ws.send(JSON.stringify(payload));
-        console.log('📤 Sent JPEG blob to backend:', jpegBlob.size, 'bytes');
+        // Convert blob to base64 string using the existing helper method
+        base64Data = await this.blobToBase64(jpegBlob);
+        // Removed verbose sending log - focus on responses
       } else {
-        // If it's already string/base64, send as is
-        const payload = {
-          jpeg_blob: jpegBlob,
-          new_letter: newLetter
-        };
-        this.ws.send(JSON.stringify(payload));
+        // If it's already string/base64, use as is
+        base64Data = jpegBlob;
       }
+
+      // Create payload with base64 encoded image
+      const payload = {
+        jpeg_blob: base64Data, // Now sending as base64 string
+        new_word_letter: newLetter  // Backend expects 'new_word_letter'
+      };
+
+      this.ws.send(JSON.stringify(payload));
 
       this.lastSentTime = now;
       return true;
@@ -198,7 +195,7 @@ class SignLanguageWebSocket {
 
     const payload = {
       jpeg_blob: null,
-      new_letter: letter
+      new_word_letter: letter  // Backend expects 'new_word_letter'
     };
 
     try {

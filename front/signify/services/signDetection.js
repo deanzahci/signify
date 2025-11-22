@@ -19,11 +19,11 @@ class SignDetectionManager {
       onConfidenceUpdate: null,
       onConnectionChange: null
     };
-    this.confidenceThreshold = 0.8; // 80% confidence to accept
+    this.confidenceThreshold = 0.7; // 70% confidence to accept
     this.lastDetectedLetter = null;
     this.lastDetectedWord = null;
     this.consecutiveDetections = 0;
-    this.requiredConsecutiveDetections = 3; // Need 3 consecutive detections
+    this.requiredConsecutiveDetections = 1; // Immediate detection - no need for consecutive
     this.wsConnected = false;
     this.debugMode = true; // Enable detailed logging
   }
@@ -231,32 +231,15 @@ class SignDetectionManager {
 
     // Check if detected letter matches target with sufficient confidence
     if (detectedValue === this.currentTargetLetter && confidence >= this.confidenceThreshold) {
-      if (detectedValue === this.lastDetectedLetter) {
-        this.consecutiveDetections++;
-        console.log(` Consecutive detection ${this.consecutiveDetections}/${this.requiredConsecutiveDetections}`);
-      } else {
-        this.consecutiveDetections = 1;
-        this.lastDetectedLetter = detectedValue;
+      console.log('✅ Letter detected successfully:', this.currentTargetLetter);
+
+      // Immediately call the callback on first detection
+      if (this.callbacks.onLetterDetected) {
+        this.callbacks.onLetterDetected(this.currentTargetLetter);
       }
 
-      // Check if we have enough consecutive detections
-      if (this.consecutiveDetections >= this.requiredConsecutiveDetections) {
-        console.log(' Letter detected successfully:', this.currentTargetLetter);
-
-        if (this.callbacks.onLetterDetected) {
-          this.callbacks.onLetterDetected(this.currentTargetLetter);
-        }
-
-        // Reset for next letter
-        this.consecutiveDetections = 0;
-        this.lastDetectedLetter = null;
-      }
-    } else {
-      // Reset consecutive count if different letter or low confidence
-      if (this.lastDetectedLetter !== detectedValue) {
-        this.consecutiveDetections = 0;
-        this.lastDetectedLetter = null;
-      }
+      // Store last detected to prevent duplicate detections
+      this.lastDetectedLetter = detectedValue;
     }
   }
 
@@ -283,32 +266,15 @@ class SignDetectionManager {
 
     // Check if detected word matches target with sufficient confidence
     if (detectedValue === this.currentTargetWord && confidence >= this.confidenceThreshold) {
-      if (detectedValue === this.lastDetectedWord) {
-        this.consecutiveDetections++;
-        console.log(` Consecutive word detection ${this.consecutiveDetections}/${this.requiredConsecutiveDetections}`);
-      } else {
-        this.consecutiveDetections = 1;
-        this.lastDetectedWord = detectedValue;
+      console.log('✅ Word detected successfully:', this.currentTargetWord);
+
+      // Immediately call the callback on first detection
+      if (this.callbacks.onWordDetected) {
+        this.callbacks.onWordDetected(this.currentTargetWord);
       }
 
-      // Check if we have enough consecutive detections
-      if (this.consecutiveDetections >= this.requiredConsecutiveDetections) {
-        console.log(' Word detected successfully:', this.currentTargetWord);
-
-        if (this.callbacks.onWordDetected) {
-          this.callbacks.onWordDetected(this.currentTargetWord);
-        }
-
-        // Reset for next word
-        this.consecutiveDetections = 0;
-        this.lastDetectedWord = null;
-      }
-    } else {
-      // Reset consecutive count if different word or low confidence
-      if (this.lastDetectedWord !== detectedValue) {
-        this.consecutiveDetections = 0;
-        this.lastDetectedWord = null;
-      }
+      // Store last detected to prevent duplicate detections
+      this.lastDetectedWord = detectedValue;
     }
   }
 
