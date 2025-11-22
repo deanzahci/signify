@@ -56,7 +56,7 @@ const LetterBox = ({ letter, idx, currentLetterIndex, styles, themedColors }) =>
           isCurrent && styles.letterDisplayTextCurrent,
         ]}
       >
-        {isCompleted ? letter : '_'}
+        {isCompleted ? letter : '?'}
       </Text>
     </Animated.View>
   );
@@ -466,7 +466,7 @@ const QuizGameScreen = ({
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
               <Text style={[styles.currentSignLetterBottom, { fontSize: 24, color: themedColors.brutalWhite }]}>
-                {quizQuestion.word[currentLetterIndex]}
+                ?
               </Text>
               {/* Mini hint inline */}
               {isStruggling && (

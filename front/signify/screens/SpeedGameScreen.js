@@ -408,7 +408,7 @@ const SpeedGameScreen = ({
             <NBIcon name="Lightning" size={16} color={isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite} />
             <Text style={[styles.quizCardLabel, { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite, fontSize: 11, marginLeft: 6 }]}>TIME</Text>
           </View>
-          <Animated.Text style={[styles.quizLetterCount, { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite, fontSize: 32 }, timerStyle]}>
+          <Animated.Text style={[styles.quizLetterCount, { color: themedColors.brutalWhite, fontSize: 32, textAlign: 'center' }]}>
             {localTimer}s
           </Animated.Text>
         </Animated.View>
@@ -455,7 +455,7 @@ const SpeedGameScreen = ({
                         idx === currentLetterIndex && styles.letterDisplayTextCurrent,
                       ]}
                     >
-                      {letter}
+                      {idx < currentLetterIndex ? letter : '_'}
                     </Text>
                   </View>
                 ))}
