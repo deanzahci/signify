@@ -51,26 +51,25 @@ class PreprocessingService:
         return None
 
     def extract_landmarks(self, image: np.ndarray) -> Optional[np.ndarray]:
+        """
+        Extract landmarks from primary hand (single hand detection).
+
+        Returns:
+            numpy array of shape (21, 3) or None if no hands detected
+        """
         results = self.mp_hands.process(image)
 
         if not results.multi_hand_landmarks:
             return None
 
-        if len(results.multi_hand_landmarks) < 2:
-            return None
+        # Select primary hand (first detected hand)
+        # The ONNX model only requires single hand (21 landmarks)
+        primary_hand = results.multi_hand_landmarks[0]
 
-        left_hand = self.find_hand(results, "Left")
-        right_hand = self.find_hand(results, "Right")
+        # Convert to numpy array
+        hand_array = self.landmarks_to_array(primary_hand)
 
-        if left_hand is None or right_hand is None:
-            return None
-
-        left_array = self.landmarks_to_array(left_hand)
-        right_array = self.landmarks_to_array(right_hand)
-
-        combined = np.vstack([left_array, right_array])
-
-        return combined
+        return hand_array  # Shape: (21, 3)
 
     def process(self, jpeg_bytes: bytes) -> Optional[np.ndarray]:
         image = self.decode_jpeg(jpeg_bytes)

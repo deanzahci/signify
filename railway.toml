@@ -1,11 +1,14 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "back/Dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
 startCommand = "python main.py"
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 10
+
+[environments.production]
+rootDirectory = "back"
 
 [[services]]
 name = "signify-backend"

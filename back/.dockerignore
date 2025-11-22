@@ -7,12 +7,39 @@ __pycache__/
 *.py[cod]
 *$py.class
 .venv
+venv/
+env/
 .env
+*.pyc
 
-# Testing and Documentation
+# Testing
+tests/
 test/
-docs/
-*.md
 pytest_cache/
 .coverage
 htmlcov/
+.pytest_cache/
+
+# Documentation (exclude from image to reduce size)
+docs/
+*.md
+!ONNX_MIGRATION_SUMMARY.md
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Build artifacts
+build/
+dist/
+*.egg-info/

@@ -1,8 +1,12 @@
 import asyncio
+import json
 import logging
+import os
 import signal
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from threading import Thread
 from typing import Optional
 
 import websockets
@@ -14,6 +18,30 @@ from app.state import PipelineState
 from utils.async_helpers import format_error_response
 from utils.logging_config import setup_logging
 from utils.metrics import PerformanceMetrics
+
+
+class HealthCheckHandler(BaseHTTPRequestHandler):
+    """Simple HTTP health check endpoint for Railway monitoring."""
+
+    def do_GET(self):
+        if self.path == "/health":
+            self.send_response(200)
+            self.send_header("Content-type", "application/json")
+            self.end_headers()
+            health_data = {
+                "status": "healthy",
+                "service": "signify-backend",
+                "version": "1.0.0",
+                "model": "ONNX",
+            }
+            self.wfile.write(json.dumps(health_data).encode())
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def log_message(self, format, *args):
+        # Suppress HTTP logs to avoid cluttering output
+        pass
 
 
 class SignifyServer:
@@ -35,6 +63,15 @@ class SignifyServer:
         self.state = PipelineState()
         self.metrics = PerformanceMetrics()
         self.producer = Producer(self.state, self.executor, self.metrics)
+
+        # Start health check server for Railway monitoring
+        health_port = int(os.getenv("HEALTH_PORT", "8080"))
+        health_server = HTTPServer(("0.0.0.0", health_port), HealthCheckHandler)
+        health_thread = Thread(target=health_server.serve_forever, daemon=True)
+        health_thread.start()
+        self.logger.info(
+            f"Health check endpoint available at http://0.0.0.0:{health_port}/health"
+        )
 
         self.logger.info("Server components initialized")
 
