@@ -29,24 +29,20 @@ if (getApps().length === 0) {
 
 // Initialize Auth differently for web vs mobile
 let auth;
-try {
-  if (Platform.OS === 'web') {
-    // For web, use regular getAuth
-    auth = getAuth(app);
-  } else {
-    // For React Native, try to get existing auth or initialize new one
-    try {
-      auth = getAuth(app);
-    } catch (error) {
-      auth = initializeAuth(app, {
-        persistence: getReactNativePersistence(AsyncStorage)
-      });
-    }
-  }
-} catch (error) {
-  console.error('Firebase auth initialization error:', error);
-  // Fallback to basic getAuth
+if (Platform.OS === 'web') {
+  // For web, use regular getAuth
   auth = getAuth(app);
+} else {
+  // For React Native, always use initializeAuth with AsyncStorage persistence
+  // Check if auth is already initialized
+  try {
+    auth = getAuth(app);
+  } catch (error) {
+    // Auth not initialized yet, initialize with AsyncStorage persistence
+    auth = initializeAuth(app, {
+      persistence: getReactNativePersistence(AsyncStorage)
+    });
+  }
 }
 
 // Initialize Firestore

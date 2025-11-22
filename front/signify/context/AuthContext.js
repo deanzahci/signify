@@ -71,6 +71,13 @@ export const AuthProvider = ({ children }) => {
 
       if (!userSnap.exists()) {
         // New user - create document
+        // Initialize letter statistics for all 26 letters
+        const letterStats = {};
+        for (let i = 65; i <= 90; i++) {
+          const letter = String.fromCharCode(i);
+          letterStats[letter] = { attempts: 0, skips: 0, successes: 0 };
+        }
+
         await setDoc(userRef, {
           ...userData,
           createdAt: serverTimestamp(),
@@ -80,7 +87,16 @@ export const AuthProvider = ({ children }) => {
           highScoreSpeed:0,
           highScoreQuiz:0,
           gamesPlayed: 0,
-    
+
+          // Struggle tracking system
+          struggleLetters: {
+            high: [],     // Letters with >70% skip rate
+            medium: [],   // Letters with 40-70% skip rate
+            low: []       // Letters with <40% skip rate
+          },
+          letterStats: letterStats,
+          lastStatsUpdate: serverTimestamp()
+
         });
       } else {
         // Existing user - update last login
