@@ -101,7 +101,12 @@ class Consumer:
             duration = time.time() - start_time
             self.metrics.record_frame_time(duration)
 
-            return {"maxarg_letter": maxarg_letter, "target_arg_prob": target_arg_prob}
+            # Determine what probability to send back
+            # If we have a target, send the probability of that target (accuracy)
+            # If we don't (Free Mode), send the max probability (confidence)
+            display_prob = target_arg_prob if self.state.current_target_letter else max_prob
+
+            return {"maxarg_letter": maxarg_letter, "target_arg_prob": display_prob}
 
         except Exception as e:
             self.logger.error(f"Error processing frame: {e}", exc_info=True)
