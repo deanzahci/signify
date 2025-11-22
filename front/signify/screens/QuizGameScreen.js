@@ -357,7 +357,9 @@ const QuizGameScreen = ({
             </AnimatedTouchableOpacity>
 
             <Animated.View style={styles.topCenter} entering={FadeIn.duration(600).delay(400)}>
-              <Text style={styles.topScoreLabel}>LV{userLevelQuiz} | {quizScore}</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Text style={styles.topScoreLabel}>LV{userLevelQuiz} | {quizScore}</Text>
+              </View>
               <Text style={styles.topRoundLabel}>Round {quizRound + 1}</Text>
               {/* Floating score indicator */}
               {quizScore > prevScore && (
@@ -547,7 +549,7 @@ const QuizGameScreen = ({
           entering={ZoomIn.duration(400).delay(100)}
         >
           <Text style={[styles.detectButtonText, { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }]}>
-            {isDetecting ? 'DETECTING...' : '🤚 DETECT SIGN'}
+            {isDetecting ? 'DETECTING...' : 'DETECT SIGN'}
           </Text>
         </AnimatedTouchableOpacity>
       </View>
@@ -676,6 +678,7 @@ const styles = StyleSheet.create({
   topCenter: {
     alignItems: 'center',
     flex: 0, // Don't let center grow and squeeze buttons
+    minWidth: 120, // Ensure enough space for "LV1 | 10"
   },
   topScoreLabel: {
     fontSize: 14,
@@ -686,6 +689,9 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderWidth: 3,
     borderColor: colors.brutalBlack,
+    textAlign: 'center',
+    flexWrap: 'nowrap',
+    whiteSpace: 'nowrap',
   },
   topRoundLabel: {
     fontSize: 12,

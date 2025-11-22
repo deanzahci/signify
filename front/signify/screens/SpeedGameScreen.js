@@ -576,7 +576,7 @@ const SpeedGameScreen = ({
           entering={ZoomIn.duration(400).delay(100)}
         >
           <Text style={[styles.detectButtonText, { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }]}>
-            {nextWordCountdown !== null ? '⏸️ WAITING...' : isDetecting ? 'DETECTING...' : '🤚 DETECT SIGN'}
+            {nextWordCountdown !== null ? 'WAITING...' : isDetecting ? 'DETECTING...' : 'DETECT SIGN'}
           </Text>
         </AnimatedTouchableOpacity>
       </View>
