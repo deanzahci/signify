@@ -141,6 +141,9 @@ const GameScreen = () => {
   
   const startQuizMode = async () => {
     console.log("Starting Quiz Mode")
+    
+    let wordsToUse = FALLBACK_WORD_BANK;
+    
     // Call game API with user data
     if (user && user.id) {
       try {
@@ -176,22 +179,24 @@ const GameScreen = () => {
             }
           }).filter(item => item !== null);
           
-          setQuizWordsFromApi(wordsWithHints);
-          console.log('Formatted quiz words:', JSON.stringify(wordsWithHints));
+          wordsToUse = wordsWithHints;
+          console.log('Using words from API:', JSON.stringify(wordsToUse));
         } else {
           // Fallback to default word bank
           console.log('Using fallback word bank');
-          setQuizWordsFromApi(FALLBACK_WORD_BANK);
+          wordsToUse = FALLBACK_WORD_BANK;
         }
       } catch (error) {
         console.error('Error calling quiz API:', error);
-        setQuizWordsFromApi(FALLBACK_WORD_BANK);
+        wordsToUse = FALLBACK_WORD_BANK;
       }
     } else {
       console.log("No user logged in - using fallback")
-      // No user logged in, use fallback
-      setQuizWordsFromApi(FALLBACK_WORD_BANK);
+      wordsToUse = FALLBACK_WORD_BANK;
     }
+    
+    // Set the API words in state
+    setQuizWordsFromApi(wordsToUse);
     
     // Navigate to quiz screen - no camera yet
     setCurrentScreen('quiz');
@@ -204,9 +209,18 @@ const GameScreen = () => {
     setQuizGameActive(false);
     setQuizRevealWord(false);
     
-    // Small delay to ensure state is set
+    // Generate first question immediately with the words we just fetched
     setTimeout(() => {
-      generateQuizQuestion();
+      const availableWords = wordsToUse.filter(
+        item => !usedQuizWords.includes(item.word)
+      );
+      
+      if (availableWords.length > 0) {
+        const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+        setQuizQuestion(randomWord);
+        setUsedQuizWords([randomWord.word]);
+        console.log('First quiz question set:', randomWord);
+      }
     }, 100);
   };
 
@@ -220,10 +234,15 @@ const GameScreen = () => {
     );
     
     if (availableWords.length === 0) {
-      // Game completed - all words used
-      setQuizFeedback('🎉 QUIZ COMPLETED! You finished all questions!');
+      // Level completed - all words used, move to next level
+      setQuizFeedback('🎉 LEVEL COMPLETED! Moving to next level...');
       setQuizGameActive(false);
       updateQuizLevelInFirestore();
+      
+      // After updating Firestore, restart with next level
+      setTimeout(() => {
+        startQuizMode(); // This will fetch new words for the next level
+      }, 3000);
       return;
     }
     
@@ -290,10 +309,30 @@ const GameScreen = () => {
   const skipQuizQuestion = () => {
     setQuizRound(quizRound + 1);
     setQuizFeedback('⏭️ SKIPPED');
-    setQuizGameActive(false);
-    setTimeout(() => {
-      generateQuizQuestion();
-    }, 1000);
+    
+    // Check if there are more words available
+    const wordBank = quizWordsFromApi.length > 0 ? quizWordsFromApi : FALLBACK_WORD_BANK;
+    const availableWords = wordBank.filter(
+      item => !usedQuizWords.includes(item.word)
+    );
+    
+    if (availableWords.length === 0) {
+      // Level completed - all words used
+      setQuizGameActive(false);
+      setTimeout(() => {
+        setQuizFeedback('🎉 LEVEL COMPLETED! Moving to next level...');
+        updateQuizLevelInFirestore();
+        // After a delay, restart with next level
+        setTimeout(() => {
+          startQuizMode(); // This will fetch new words for the next level
+        }, 2000);
+      }, 1000);
+    } else {
+      // More words available, continue
+      setTimeout(() => {
+        generateQuizQuestion();
+      }, 1000);
+    }
   };
 
   // Update quiz level in Firestore after completing all words
@@ -334,7 +373,17 @@ const GameScreen = () => {
         setQuizScore(quizScore + 10);
         setQuizFeedback('🎉 CORRECT! +10 points');
         setQuizRound(quizRound + 1);
-        setQuizGameActive(false);
+        
+        // Check if there are more words in this level
+        const wordBank = quizWordsFromApi.length > 0 ? quizWordsFromApi : FALLBACK_WORD_BANK;
+        const availableWords = wordBank.filter(
+          item => !usedQuizWords.includes(item.word)
+        );
+        
+        if (availableWords.length === 0) {
+          // Level completed - stop game
+          setQuizGameActive(false);
+        }
         
         setTimeout(() => {
           generateQuizQuestion();
@@ -354,6 +403,12 @@ const GameScreen = () => {
   // ==================== TYPING SPEED RUN FUNCTIONS ====================
   
   const startTypingMode = async () => {
+    let wordsToUse = FALLBACK_WORD_BANK.slice(0, 20).map(item => ({
+      word: item.word,
+      timeLimit: 10
+    }));
+    let timerDuration = 30;
+    
     // Call game API with user data
     if (user && user.id) {
       try {
@@ -371,36 +426,24 @@ const GameScreen = () => {
             timeLimit: item.timeLimit
           }));
           
-          setSpeedWordsFromApi(wordsForSpeed);
-          setTypingTimer(apiResponse.totalTime || 30);
+          wordsToUse = wordsForSpeed;
+          timerDuration = apiResponse.totalTime || 30;
+          console.log('Using words from API for speed game:', JSON.stringify(wordsToUse));
         } else {
           // Fallback to default word bank
           console.log('Using fallback word bank for speed game');
-          const fallbackWords = FALLBACK_WORD_BANK.slice(0, 20).map(item => ({
-            word: item.word,
-            timeLimit: 10
-          }));
-          setSpeedWordsFromApi(fallbackWords);
-          setTypingTimer(30);
         }
       } catch (error) {
         console.error('Error calling speed API:', error);
-        const fallbackWords = FALLBACK_WORD_BANK.slice(0, 20).map(item => ({
-          word: item.word,
-          timeLimit: 10
-        }));
-        setSpeedWordsFromApi(fallbackWords);
-        setTypingTimer(30);
       }
     } else {
-      // No user logged in, use fallback
-      const fallbackWords = FALLBACK_WORD_BANK.slice(0, 20).map(item => ({
-        word: item.word,
-        timeLimit: 10
-      }));
-      setSpeedWordsFromApi(fallbackWords);
-      setTypingTimer(30);
+      console.log('No user logged in - using fallback for speed game');
     }
+    
+    // Set the API words and timer in state
+    setSpeedWordsFromApi(wordsToUse);
+    setTypingWords(wordsToUse);
+    setTypingTimer(timerDuration);
     
     // Navigate to typing screen - no camera yet
     setCurrentScreen('typing');
@@ -411,15 +454,11 @@ const GameScreen = () => {
     setCameraReady(false);
     setTypingGameActive(false);
     
-    // Small delay to ensure state is set
+    // Set first word as current question immediately with the words we just fetched
     setTimeout(() => {
-      // Use API words if available
-      const words = speedWordsFromApi.length > 0 ? speedWordsFromApi : FALLBACK_WORD_BANK;
-      setTypingWords(words);
-      
-      // Set first word as current question
-      if (words.length > 0) {
-        setQuizQuestion(words[0]);
+      if (wordsToUse.length > 0) {
+        setQuizQuestion(wordsToUse[0]);
+        console.log('First speed word set:', wordsToUse[0]);
       }
     }, 100);
   };
@@ -468,7 +507,14 @@ const GameScreen = () => {
         setTypingTimer(prev => {
           if (prev <= 1) {
             setTypingGameActive(false);
+            // Timer ended - show completion message then move to next level
+            setQuizFeedback('⏱️ TIME\'S UP! Level completed!');
             updateSpeedLevelInFirestore();
+            
+            // After a delay, restart with next level
+            setTimeout(() => {
+              startTypingMode(); // This will fetch new words for the next level
+            }, 3000);
             return 0;
           }
           return prev - 1;
@@ -548,10 +594,15 @@ const GameScreen = () => {
             setQuizQuestion(typingWords[currentWordIndex + 1]);
             setQuizFeedback('');
           } else {
-            // Finished all words
+            // Finished all words before timer - move to next level!
             setTypingGameActive(false);
-            setQuizFeedback('🎉 ALL WORDS COMPLETED!');
+            setQuizFeedback('🎉 ALL WORDS COMPLETED! Moving to next level...');
             updateSpeedLevelInFirestore();
+            
+            // After a delay, restart with next level
+            setTimeout(() => {
+              startTypingMode(); // This will fetch new words for the next level
+            }, 3000);
           }
         }, 1500);
       } else {
@@ -657,7 +708,7 @@ const GameScreen = () => {
           </View>
 
           <Text style={styles.gameTitle}>QUIZ MODE</Text>
-          <Text style={styles.gameSubtitle}>Round {quizRound + 1}</Text>
+          <Text style={styles.gameSubtitle}>Level {userLevelQuiz} - Round {quizRound + 1}</Text>
 
           {/* Mode Description Card */}
           <View style={[styles.quizCard, { backgroundColor: colors.brutalBlue, marginBottom: 20 }]}>
@@ -750,7 +801,7 @@ const GameScreen = () => {
               </TouchableOpacity>
               
               <View style={styles.topCenter}>
-                <Text style={styles.topScoreLabel}>SCORE: {quizScore}</Text>
+                <Text style={styles.topScoreLabel}>LEVEL {userLevelQuiz} | SCORE: {quizScore}</Text>
                 <Text style={styles.topRoundLabel}>Round {quizRound + 1}</Text>
               </View>
               
@@ -878,7 +929,7 @@ const GameScreen = () => {
           </View>
 
           <Text style={styles.gameTitle}>SIGNSPEED</Text>
-          <Text style={styles.gameSubtitle}>Word {currentWordIndex + 1}/{typingWords.length}</Text>
+          <Text style={styles.gameSubtitle}>Level {userLevelSpeed} - Word {currentWordIndex + 1}/{typingWords.length}</Text>
 
           {/* Mode Description Card */}
           <View style={[styles.quizCard, { backgroundColor: colors.brutalGreen, marginBottom: 20 }]}>
@@ -971,7 +1022,7 @@ const GameScreen = () => {
               </TouchableOpacity>
               
               <View style={styles.topCenter}>
-                <Text style={styles.topScoreLabel}>⏱️ {typingTimer}s</Text>
+                <Text style={styles.topScoreLabel}>LEVEL {userLevelSpeed} | ⏱️ {typingTimer}s</Text>
                 <Text style={styles.topRoundLabel}>Word {currentWordIndex + 1}/{typingWords.length}</Text>
               </View>
               
