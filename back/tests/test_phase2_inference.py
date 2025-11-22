@@ -1,8 +1,3 @@
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 import numpy as np
 from services.inference import InferenceService
 from config import LSTM_NUM_CLASSES, TOTAL_LANDMARKS, KEYPOINT_BUFFER_SIZE

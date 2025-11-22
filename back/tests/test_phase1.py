@@ -1,8 +1,3 @@
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from app.state import PipelineState
 from utils.metrics import extract_metrics, index_to_char, char_to_index
 

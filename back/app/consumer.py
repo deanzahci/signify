@@ -8,7 +8,7 @@ from app.state import PipelineState
 from services.inference import InferenceService
 from services.preprocessing import PreprocessingService
 from services.smoothing import SmoothingService
-from utils.metrics import extract_metrics, PerformanceMetrics
+from utils.metrics import PerformanceMetrics, extract_metrics
 
 
 class Consumer:

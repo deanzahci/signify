@@ -1,0 +1,18 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv
+.env
+
+# Testing and Documentation
+test/
+docs/
+*.md
+pytest_cache/
+.coverage
+htmlcov/

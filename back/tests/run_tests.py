@@ -4,16 +4,19 @@ import sys
 from pathlib import Path
 
 
-def run_test(test_file):
+def run_test(test_file, project_root):
     print(f"\n{'=' * 60}")
     print(f"Running: {test_file.name}")
     print("=" * 60)
-    result = subprocess.run([sys.executable, str(test_file)], cwd=test_file.parent)
+    # Run as a module relative to project root
+    module_name = f"tests.{test_file.stem}"
+    result = subprocess.run([sys.executable, "-m", module_name], cwd=project_root)
     return result.returncode == 0
 
 
 def main():
-    test_dir = Path(__file__).parent / "test"
+    test_dir = Path(__file__).parent
+    project_root = test_dir.parent
     test_files = sorted(test_dir.glob("test_*.py"))
 
     if not test_files:
@@ -24,7 +27,7 @@ def main():
 
     results = {}
     for test_file in test_files:
-        results[test_file.name] = run_test(test_file)
+        results[test_file.name] = run_test(test_file, project_root)
 
     print(f"\n{'=' * 60}")
     print("TEST SUMMARY")

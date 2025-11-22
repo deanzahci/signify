@@ -1,8 +1,3 @@
-import sys
-from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from services.smoothing import SmoothingService
 from utils.buffer import RollingBuffer
 from config import SLIDING_WINDOW_SIZE
