@@ -57,7 +57,7 @@ const LetterBox = ({ letter, idx, currentLetterIndex, styles, themedColors }) =>
           isCurrent && styles.letterDisplayTextCurrent,
         ]}
       >
-        {isCompleted ? letter : '?'}
+        {isCompleted ? (letter || '') : '?'}
       </Text>
     </Animated.View>
   );
@@ -75,7 +75,8 @@ const QuizGameScreen = ({
   onExitQuiz,
   onSkipQuestion,
   onSimulateDetection,
-  onCameraReady
+  onCameraReady,
+  onLetterDetected
 }) => {
   const { isDarkMode } = useTheme();
   const themedColors = useThemedColors();
@@ -138,8 +139,8 @@ const QuizGameScreen = ({
         onLetterDetected: (letter) => {
           console.log('Letter detected in Quiz:', letter);
           // In letter mode, use the actual detected letter
-          if (mode !== 'word' && props.onLetterDetected) {
-            props.onLetterDetected(letter);
+          if (mode !== 'word' && onLetterDetected) {
+            onLetterDetected(letter);
           } else if (mode !== 'word' && onSimulateDetection) {
             // Fallback to simulation if no letter handler provided
             onSimulateDetection();
@@ -465,7 +466,7 @@ const QuizGameScreen = ({
                         currentLetterIndex >= quizQuestion.word.length && styles.letterDisplayTextCompleted
                       ]}
                     >
-                      {currentLetterIndex >= quizQuestion.word.length ? letter : '_'}
+                      {currentLetterIndex >= quizQuestion.word.length ? (letter || '') : '_'}
                     </Text>
                   </View>
                 ))}
