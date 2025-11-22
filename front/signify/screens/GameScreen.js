@@ -2,10 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput, Animated, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { useAuth } from '../context/AuthContext';
+import { quizGame, speedGame } from '../utils/gameApi';
 import { colors } from '../styles/colors';
 
-// Sample word bank for games
-const WORD_BANK = [
+// Fallback word bank with hints - used when API doesn't provide words
+const FALLBACK_WORD_BANK = [
   { word: 'HELLO', hint: 'A common greeting' },
   { word: 'WORLD', hint: 'The Earth or global community' },
   { word: 'LEARN', hint: 'To acquire knowledge' },
@@ -23,12 +27,39 @@ const WORD_BANK = [
   { word: 'DREAM', hint: 'Images during sleep or aspirations' },
 ];
 
+// Hint generator for API words (basic hints based on word)
+const generateHint = (word) => {
+  const upperWord = word.toUpperCase();
+  const hints = {
+    'HELLO': 'A common greeting',
+    'WORLD': 'The Earth or global community',
+    'HI': 'A casual greeting',
+    'BYE': 'A way to say goodbye',
+    'YES': 'An affirmative answer',
+    'NO': 'A negative answer',
+    'GOOD': 'Something positive or well-done',
+    'BAD': 'Something negative or wrong',
+  };
+  return hints[upperWord] || `A word with ${word.length} letters`;
+};
+
 const GameScreen = () => {
+  // Auth context
+  const { user } = useAuth();
+  
   // Main navigation state
   const [currentScreen, setCurrentScreen] = useState('menu'); // 'menu', 'quiz', 'typing'
   
   // Camera permissions hook
   const [permission, requestPermission] = useCameraPermissions();
+  
+  // User levels
+  const [userLevelQuiz, setUserLevelQuiz] = useState(1);
+  const [userLevelSpeed, setUserLevelSpeed] = useState(1);
+  
+  // API Response storage
+  const [quizWordsFromApi, setQuizWordsFromApi] = useState([]);
+  const [speedWordsFromApi, setSpeedWordsFromApi] = useState([]);
   
   // Quiz Mode States
   const [quizQuestion, setQuizQuestion] = useState(null);
@@ -60,6 +91,32 @@ const GameScreen = () => {
   // Animation
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
+  // Fetch user levels from Firestore
+  useEffect(() => {
+    const fetchUserLevels = async () => {
+      if (user && user.id) {
+        try {
+          const userRef = doc(db, 'users', user.id);
+          const userSnap = await getDoc(userRef);
+          
+          if (userSnap.exists()) {
+            const userData = userSnap.data();
+            setUserLevelQuiz(userData.levelQuiz || 1);
+            setUserLevelSpeed(userData.levelSpeed || 1);
+            console.log('User levels loaded:', {
+              quiz: userData.levelQuiz,
+              speed: userData.levelSpeed
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching user levels:', error);
+        }
+      }
+    };
+
+    fetchUserLevels();
+  }, [user]);
+
   // Pulse animation for active elements
   useEffect(() => {
     if (currentScreen !== 'menu') {
@@ -82,8 +139,61 @@ const GameScreen = () => {
 
   // ==================== QUIZ MODE FUNCTIONS ====================
   
-  const startQuizMode = () => {
-    // Just navigate to quiz screen - no camera yet
+  const startQuizMode = async () => {
+    console.log("Starting Quiz Mode")
+    // Call game API with user data
+    if (user && user.id) {
+      try {
+        console.log('Calling quizGame API...');
+        const apiResponse = await quizGame(user.id, userLevelQuiz);
+        console.log('Quiz API Response:', apiResponse);
+        
+        if (apiResponse.success && apiResponse.words && apiResponse.words.length > 0) {
+          console.log('Quiz words from API:', apiResponse.words);
+          
+          // Check if API words already have hint property (new format)
+          const wordsWithHints = apiResponse.words.map(item => {
+            if (typeof item === 'object' && item.word && item.hint) {
+              // API returned {word, hint} format - validate hint is useful
+              const isValidHint = item.hint && 
+                                  item.hint !== 'timeLimit' && 
+                                  item.hint.length > 3 &&
+                                  !item.hint.includes('undefined');
+              
+              return {
+                word: item.word.toUpperCase(),
+                hint: isValidHint ? item.hint : generateHint(item.word)
+              };
+            } else if (typeof item === 'string') {
+              // API returned just strings
+              return {
+                word: item.toUpperCase(),
+                hint: generateHint(item)
+              };
+            } else {
+              console.warn('Unexpected word format:', item);
+              return null;
+            }
+          }).filter(item => item !== null);
+          
+          setQuizWordsFromApi(wordsWithHints);
+          console.log('Formatted quiz words:', JSON.stringify(wordsWithHints));
+        } else {
+          // Fallback to default word bank
+          console.log('Using fallback word bank');
+          setQuizWordsFromApi(FALLBACK_WORD_BANK);
+        }
+      } catch (error) {
+        console.error('Error calling quiz API:', error);
+        setQuizWordsFromApi(FALLBACK_WORD_BANK);
+      }
+    } else {
+      console.log("No user logged in - using fallback")
+      // No user logged in, use fallback
+      setQuizWordsFromApi(FALLBACK_WORD_BANK);
+    }
+    
+    // Navigate to quiz screen - no camera yet
     setCurrentScreen('quiz');
     setQuizScore(0);
     setQuizRound(0);
@@ -93,12 +203,19 @@ const GameScreen = () => {
     setCameraReady(false);
     setQuizGameActive(false);
     setQuizRevealWord(false);
-    generateQuizQuestion();
+    
+    // Small delay to ensure state is set
+    setTimeout(() => {
+      generateQuizQuestion();
+    }, 100);
   };
 
   const generateQuizQuestion = () => {
+    // Use API words if available, otherwise fallback
+    const wordBank = quizWordsFromApi.length > 0 ? quizWordsFromApi : FALLBACK_WORD_BANK;
+    
     // Filter out already used words
-    const availableWords = WORD_BANK.filter(
+    const availableWords = wordBank.filter(
       item => !usedQuizWords.includes(item.word)
     );
     
@@ -106,6 +223,7 @@ const GameScreen = () => {
       // Game completed - all words used
       setQuizFeedback('🎉 QUIZ COMPLETED! You finished all questions!');
       setQuizGameActive(false);
+      updateQuizLevelInFirestore();
       return;
     }
     
@@ -178,6 +296,25 @@ const GameScreen = () => {
     }, 1000);
   };
 
+  // Update quiz level in Firestore after completing all words
+  const updateQuizLevelInFirestore = async () => {
+    if (user && user.id) {
+      try {
+        const userRef = doc(db, 'users', user.id);
+        await updateDoc(userRef, {
+          levelQuiz: increment(1),
+          highScoreQuiz: quizScore > 0 ? quizScore : 0,
+          gamesPlayed: increment(1)
+        });
+        console.log('✅ Quiz level updated in Firestore!');
+        // Update local state
+        setUserLevelQuiz(prev => prev + 1);
+      } catch (error) {
+        console.error('Error updating quiz level:', error);
+      }
+    }
+  };
+
   // Simulate sign detection for Quiz Mode
   const simulateQuizSignDetection = () => {
     if (!quizQuestion || isDetecting || !quizGameActive) return;
@@ -216,8 +353,56 @@ const GameScreen = () => {
 
   // ==================== TYPING SPEED RUN FUNCTIONS ====================
   
-  const startTypingMode = () => {
-    // Just navigate to typing screen - no camera yet
+  const startTypingMode = async () => {
+    // Call game API with user data
+    if (user && user.id) {
+      try {
+        console.log('Calling speedGame API...');
+        const apiResponse = await speedGame(user.id, userLevelSpeed);
+        console.log('Speed API Response:', apiResponse);
+        
+        if (apiResponse.success && apiResponse.wordsWithTime && apiResponse.wordsWithTime.length > 0) {
+          console.log('Speed game data from API:', apiResponse);
+          console.log('Words with time limits:', apiResponse.wordsWithTime);
+          
+          // Convert API response to required format (NO hints needed for speed mode)
+          const wordsForSpeed = apiResponse.wordsWithTime.map(item => ({
+            word: item.word.toUpperCase(),
+            timeLimit: item.timeLimit
+          }));
+          
+          setSpeedWordsFromApi(wordsForSpeed);
+          setTypingTimer(apiResponse.totalTime || 30);
+        } else {
+          // Fallback to default word bank
+          console.log('Using fallback word bank for speed game');
+          const fallbackWords = FALLBACK_WORD_BANK.slice(0, 20).map(item => ({
+            word: item.word,
+            timeLimit: 10
+          }));
+          setSpeedWordsFromApi(fallbackWords);
+          setTypingTimer(30);
+        }
+      } catch (error) {
+        console.error('Error calling speed API:', error);
+        const fallbackWords = FALLBACK_WORD_BANK.slice(0, 20).map(item => ({
+          word: item.word,
+          timeLimit: 10
+        }));
+        setSpeedWordsFromApi(fallbackWords);
+        setTypingTimer(30);
+      }
+    } else {
+      // No user logged in, use fallback
+      const fallbackWords = FALLBACK_WORD_BANK.slice(0, 20).map(item => ({
+        word: item.word,
+        timeLimit: 10
+      }));
+      setSpeedWordsFromApi(fallbackWords);
+      setTypingTimer(30);
+    }
+    
+    // Navigate to typing screen - no camera yet
     setCurrentScreen('typing');
     setTypingScore(0);
     setCurrentWordIndex(0);
@@ -225,16 +410,18 @@ const GameScreen = () => {
     setSignedLetters([]);
     setCameraReady(false);
     setTypingGameActive(false);
-    setTypingTimer(30);
     
-    // Generate random word sequence
-    const shuffled = [...WORD_BANK].sort(() => Math.random() - 0.5);
-    setTypingWords(shuffled.slice(0, 20));
-    
-    // Set first word as current question
-    if (shuffled.length > 0) {
-      setQuizQuestion(shuffled[0]);
-    }
+    // Small delay to ensure state is set
+    setTimeout(() => {
+      // Use API words if available
+      const words = speedWordsFromApi.length > 0 ? speedWordsFromApi : FALLBACK_WORD_BANK;
+      setTypingWords(words);
+      
+      // Set first word as current question
+      if (words.length > 0) {
+        setQuizQuestion(words[0]);
+      }
+    }, 100);
   };
 
   const startTypingGame = async () => {
@@ -281,6 +468,7 @@ const GameScreen = () => {
         setTypingTimer(prev => {
           if (prev <= 1) {
             setTypingGameActive(false);
+            updateSpeedLevelInFirestore();
             return 0;
           }
           return prev - 1;
@@ -310,6 +498,25 @@ const GameScreen = () => {
       setTimeout(() => {
         setQuizFeedback('');
       }, 1000);
+    }
+  };
+
+  // Update speed level in Firestore after timer ends
+  const updateSpeedLevelInFirestore = async () => {
+    if (user && user.id) {
+      try {
+        const userRef = doc(db, 'users', user.id);
+        await updateDoc(userRef, {
+          levelSpeed: increment(1),
+          highScoreSpeed: typingScore > 0 ? typingScore : 0,
+          gamesPlayed: increment(1)
+        });
+        console.log('✅ Speed level updated in Firestore!');
+        // Update local state
+        setUserLevelSpeed(prev => prev + 1);
+      } catch (error) {
+        console.error('Error updating speed level:', error);
+      }
     }
   };
 
@@ -344,6 +551,7 @@ const GameScreen = () => {
             // Finished all words
             setTypingGameActive(false);
             setQuizFeedback('🎉 ALL WORDS COMPLETED!');
+            updateSpeedLevelInFirestore();
           }
         }, 1500);
       } else {

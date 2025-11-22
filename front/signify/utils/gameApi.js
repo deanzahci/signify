@@ -14,7 +14,18 @@ export async function quizGame(userUUID, userLevel) {
 
     // For now, return hardcoded words
     // TODO: In the future, integrate with AI to generate level-appropriate words
-    const words = ["hello", "world"];
+    const words =[
+      {
+        word: "hello",
+        hint: "timeLimit",
+     
+      },
+      {
+        word: "world",
+        hint: "timeLimit",
+    
+      }
+    ];
 
     // Simulate async operation (like future AI call)
     await new Promise(resolve => setTimeout(resolve, 100));
