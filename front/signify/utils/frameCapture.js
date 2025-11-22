@@ -82,7 +82,7 @@ class FrameCapture {
       // Using takePictureAsync for Expo Camera
       const photo = await cameraRef.current.takePictureAsync({
         quality: this.quality,
-        base64: true,
+        base64: false,  // Don't get base64, we want the raw URI
         exif: false,
         skipProcessing: true, // Skip processing for speed
         width: this.maxWidth // Limit width for performance
@@ -90,22 +90,24 @@ class FrameCapture {
 
       this.frameCount++;
 
+      // Fetch the image as a blob from the URI
+      const response = await fetch(photo.uri);
+      const jpegBlob = await response.blob();
+
       // Log frame capture details
       if (this.frameCount % 10 === 0) { // Log every 10th frame to reduce console spam
         console.log('📸 Frame captured:', {
           frameNumber: this.frameCount,
-          size: photo.base64 ? `${(photo.base64.length / 1024).toFixed(2)} KB` : 'unknown',
+          size: `${(jpegBlob.size / 1024).toFixed(2)} KB`,
           width: photo.width,
           height: photo.height,
           captureTime: `${now - this.lastCaptureTime}ms`,
-          totalFrames: this.frameCount
+          totalFrames: this.frameCount,
+          blobType: jpegBlob.type
         });
       }
 
       this.lastCaptureTime = now;
-
-      // Convert base64 to blob if needed
-      const jpegBlob = photo.base64;
 
       if (onFrame) {
         onFrame(jpegBlob, {

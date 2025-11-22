@@ -29,7 +29,7 @@ class SignLanguageWebSocket {
    * Initialize WebSocket connection with fallback support
    */
   connect(url, callbacks = {}) {
-    this.wsUrl = url || 'ws://localhost:8000/ws';
+    this.wsUrl = url || 'wss://signify-production-8eb6.up.railway.app';
     this.callbacks = { ...this.callbacks, ...callbacks };
     console.log('📡 WebSocket Service: Attempting connection to:', this.wsUrl);
 
@@ -152,17 +152,33 @@ class SignLanguageWebSocket {
     }
 
     try {
-      let jpegData = jpegBlob;
+      // The backend expects the raw JPEG blob data
+      // Since we can't send a Blob directly in JSON, we need to send it as binary
       if (jpegBlob instanceof Blob) {
-        jpegData = await this.blobToBase64(jpegBlob);
+        // Option 1: Send as binary WebSocket message (if backend supports it)
+        // this.ws.send(jpegBlob);
+
+        // Option 2: Convert to ArrayBuffer and send as binary
+        const arrayBuffer = await jpegBlob.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
+
+        // Create a message with metadata and binary data
+        const payload = {
+          jpeg_blob: Array.from(uint8Array), // Convert to array for JSON
+          new_letter: newLetter
+        };
+
+        this.ws.send(JSON.stringify(payload));
+        console.log('📤 Sent JPEG blob to backend:', jpegBlob.size, 'bytes');
+      } else {
+        // If it's already string/base64, send as is
+        const payload = {
+          jpeg_blob: jpegBlob,
+          new_letter: newLetter
+        };
+        this.ws.send(JSON.stringify(payload));
       }
 
-      const payload = {
-        jpeg_blob: jpegData,
-        new_letter: newLetter
-      };
-
-      this.ws.send(JSON.stringify(payload));
       this.lastSentTime = now;
       return true;
     } catch (error) {

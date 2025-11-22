@@ -7,17 +7,17 @@ const config = {
   // WebSocket Configuration
   websocket: {
     // Change this to your backend URL when it's online
-    // For local testing: 'ws://localhost:8000/ws'
-    // For production: 'ws://your-backend-domain.com/ws'
-    url: 'ws://localhost:8000/ws',
+    // For local testing: 'ws://localhost:8765'
+    // For production (Railway): 'wss://signify-production-8eb6.up.railway.app'
+    url: 'wss://signify-production-8eb6.up.railway.app',
 
     // Reconnection settings
     maxReconnectAttempts: 5,
     reconnectDelay: 1000, // Initial delay in ms
 
     // Frame sending settings
-    minFrameInterval: 100, // Minimum time between frames (ms)
-    frameRate: 10, // Target FPS
+    minFrameInterval: 50, // Reduced from 100ms - allows up to 20 FPS
+    frameRate: 15, // Increased from 10 FPS to 15 FPS
   },
 
   // Recognition Settings

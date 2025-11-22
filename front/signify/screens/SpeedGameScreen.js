@@ -18,6 +18,8 @@ import {
   useProgressAnimation
 } from '../utils/animations';
 import { HintButton, QuickHint, HintModal } from '../components/HintSystem';
+import { updateLetterStats } from '../utils/gameApi';
+import { auth } from '../config/firebase';
 
 const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -216,7 +218,18 @@ const SpeedGameScreen = ({
   }, [typingGameActive, localTimer, onTimerEnd]);
 
   // Handle hint button press
-  const handleHintPress = () => {
+  const handleHintPress = async () => {
+    // Track the current letter as a struggle letter when hint is used
+    if (quizQuestion && currentLetterIndex < quizQuestion.word.length) {
+      const currentLetter = quizQuestion.word[currentLetterIndex];
+      const user = auth.currentUser;
+      if (user) {
+        // Mark this letter as a skip/struggle since they needed a hint
+        await updateLetterStats(user.uid, currentLetter, 'skip');
+        console.log(`Tracked hint usage for letter: ${currentLetter}`);
+      }
+    }
+
     // In speed mode, show quick hint immediately due to time pressure
     setShowQuickHint(true);
     setTimeout(() => setShowQuickHint(false), 2000); // Shorter duration for speed mode

@@ -202,120 +202,130 @@ const LeaderboardScreen = () => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: themedColors.brutalWhite }]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <NBIcon name="Trophy" size={32} color={themedColors.brutalBlack} />
-          <Text style={[styles.title, { color: themedColors.brutalBlack }]}>LEADERBOARD</Text>
-        </View>
-      </View>
-
-      {/* Tab Navigation */}
-      <View style={[styles.tabContainer, { borderBottomColor: themedColors.brutalBlack }]}>
-        <View style={styles.tabContent}>
-          {categories.map((category, index) => (
-            <TabButton
-              key={category.key}
-              category={category}
-              isActive={selectedCategory === category.key}
-              index={index}
-            />
-          ))}
-        </View>
-      </View>
-
-      {/* Content */}
-      <ScrollView
-        style={styles.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[themedColors.brutalBlue]}
-            tintColor={themedColors.brutalBlue}
-          />
-        }
-      >
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={themedColors.brutalBlue} />
+    <ScrollView
+      style={[styles.scrollContainer, { backgroundColor: themedColors.brutalWhite }]}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={onRefresh}
+          colors={[themedColors.brutalBlue]}
+          tintColor={themedColors.brutalBlue}
+        />
+      }
+    >
+      <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
+        <View style={styles.header}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <NBIcon name="Trophy" size={32} color={themedColors.brutalBlack} />
+            <Text style={[styles.title, { color: themedColors.brutalBlack }]}>LEADERBOARD</Text>
           </View>
-        ) : (
-          <>
-            {/* Top Players */}
-            {leaderboardData.topPlayers.length > 0 ? (
-              <View>
-                {leaderboardData.topPlayers.map((player, index) => (
-                  <PlayerCard
-                    key={player.uid}
-                    player={player}
-                    isCurrentUser={player.uid === user?.id}
-                    index={index}
-                  />
-                ))}
-              </View>
-            ) : (
-              <View style={styles.emptyState}>
-                <NBIcon name="Target" size={48} color={themedColors.brutalGray} />
-                <Text style={[styles.emptyStateText, { color: themedColors.brutalBlack }]}>
-                  No players yet. Be the first!
-                </Text>
-              </View>
-            )}
+        </View>
 
-            {/* Your Rank Card */}
-            {user && leaderboardData.userRank &&
-             !leaderboardData.topPlayers.some(p => p.uid === user.id) && (
-              <View style={[
-                styles.yourRankCard,
-                {
-                  backgroundColor: themedColors.brutalBlue,
-                  borderColor: themedColors.brutalBlack,
-                  ...shadowStyle,
-                }
-              ]}>
-                <Text style={[
-                  styles.yourRankTitle,
-                  { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }
+        {/* Tab Navigation */}
+        <View style={[styles.tabContainer, { borderBottomColor: themedColors.brutalBlack }]}>
+          <View style={styles.tabContent}>
+            {categories.map((category, index) => (
+              <TabButton
+                key={category.key}
+                category={category}
+                isActive={selectedCategory === category.key}
+                index={index}
+              />
+            ))}
+          </View>
+        </View>
+
+        {/* Content */}
+        <View style={styles.content}>
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={themedColors.brutalBlue} />
+            </View>
+          ) : (
+            <>
+              {/* Top Players */}
+              {leaderboardData.topPlayers.length > 0 ? (
+                <View>
+                  {leaderboardData.topPlayers.map((player, index) => (
+                    <PlayerCard
+                      key={player.uid}
+                      player={player}
+                      isCurrentUser={player.uid === user?.id}
+                      index={index}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.emptyState}>
+                  <NBIcon name="Target" size={48} color={themedColors.brutalGray} />
+                  <Text style={[styles.emptyStateText, { color: themedColors.brutalBlack }]}>
+                    No players yet. Be the first!
+                  </Text>
+                </View>
+              )}
+
+              {/* Your Rank Card */}
+              {user && leaderboardData.userRank &&
+               !leaderboardData.topPlayers.some(p => p.uid === user.id) && (
+                <View style={[
+                  styles.yourRankCard,
+                  {
+                    backgroundColor: themedColors.brutalBlue,
+                    borderColor: themedColors.brutalBlack,
+                    ...shadowStyle,
+                  }
                 ]}>
-                  YOUR RANKING
-                </Text>
-                <View style={styles.yourRankRow}>
                   <Text style={[
-                    styles.yourRankLabel,
-                    { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }
-                  ]}>Position:</Text>
-                  <Text style={[
-                    styles.yourRankValue,
+                    styles.yourRankTitle,
                     { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }
                   ]}>
-                    #{leaderboardData.userRank.rank}
+                    YOUR RANKING
                   </Text>
+                  <View style={styles.yourRankRow}>
+                    <Text style={[
+                      styles.yourRankLabel,
+                      { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }
+                    ]}>Position:</Text>
+                    <Text style={[
+                      styles.yourRankValue,
+                      { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }
+                    ]}>
+                      #{leaderboardData.userRank.rank}
+                    </Text>
+                  </View>
+                  <View style={styles.yourRankRow}>
+                    <Text style={[
+                      styles.yourRankLabel,
+                      { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }
+                    ]}>Score:</Text>
+                    <Text style={[
+                      styles.yourRankValue,
+                      { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }
+                    ]}>
+                      {formatLeaderboardValue(selectedCategory, leaderboardData.userRank.value)}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.yourRankRow}>
-                  <Text style={[
-                    styles.yourRankLabel,
-                    { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }
-                  ]}>Score:</Text>
-                  <Text style={[
-                    styles.yourRankValue,
-                    { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }
-                  ]}>
-                    {formatLeaderboardValue(selectedCategory, leaderboardData.userRank.value)}
-                  </Text>
-                </View>
-              </View>
-            )}
-          </>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+              )}
+            </>
+          )}
+        </View>
+      </SafeAreaView>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  scrollContainer: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  safeArea: {
     flex: 1,
   },
   header: {
@@ -359,9 +369,8 @@ const styles = StyleSheet.create({
     color: colors.brutalWhite,
   },
   content: {
-    flex: 1,
     padding: 24,
-    paddingBottom: 100, // Add extra padding to prevent cutoff
+    paddingBottom: 100, // Add extra padding for tab bar
   },
   loadingContainer: {
     flex: 1,
