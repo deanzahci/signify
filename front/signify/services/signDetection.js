@@ -10,14 +10,18 @@ class SignDetectionManager {
   constructor() {
     this.isActive = false;
     this.currentTargetLetter = null;
+    this.currentTargetWord = null;
+    this.detectionMode = 'letter'; // 'letter' or 'word'
     this.cameraRef = null;
     this.callbacks = {
       onLetterDetected: null,
+      onWordDetected: null,
       onConfidenceUpdate: null,
       onConnectionChange: null
     };
     this.confidenceThreshold = 0.8; // 80% confidence to accept
     this.lastDetectedLetter = null;
+    this.lastDetectedWord = null;
     this.consecutiveDetections = 0;
     this.requiredConsecutiveDetections = 3; // Need 3 consecutive detections
     this.wsConnected = false;
@@ -56,6 +60,8 @@ class SignDetectionManager {
 
     this.cameraRef = cameraRef;
     this.currentTargetLetter = targetLetter;
+    this.currentTargetWord = null;
+    this.detectionMode = 'letter';
     this.lastDetectedLetter = null;
     this.consecutiveDetections = 0;
     this.isActive = true;
@@ -85,6 +91,49 @@ class SignDetectionManager {
   }
 
   /**
+   * Start detecting signs for a specific word
+   * @param {Object} cameraRef - Reference to camera component
+   * @param {string} targetWord - The word to detect
+   */
+  startWordDetection(cameraRef, targetWord) {
+    if (!cameraRef || !cameraRef.current) {
+      console.error('❌ Camera ref not provided or invalid');
+      return false;
+    }
+
+    this.cameraRef = cameraRef;
+    this.currentTargetWord = targetWord;
+    this.currentTargetLetter = null;
+    this.detectionMode = 'word';
+    this.lastDetectedWord = null;
+    this.consecutiveDetections = 0;
+    this.isActive = true;
+
+    console.log('🎯 Starting sign detection for word:', targetWord);
+    console.log('📊 Detection settings:', {
+      confidenceThreshold: this.confidenceThreshold,
+      requiredConsecutiveDetections: this.requiredConsecutiveDetections
+    });
+
+    // Send new word to backend to reset state
+    if (this.wsConnected) {
+      WebSocketService.sendNewWord(targetWord);
+    }
+
+    // Start capturing frames
+    FrameCapture.startCapture(
+      cameraRef,
+      (frameData, metadata) => this.handleFrameCapture(frameData, metadata),
+      {
+        frameRate: 100, // 100ms = 10 FPS
+        quality: 0.5
+      }
+    );
+
+    return true;
+  }
+
+  /**
    * Update target letter without stopping detection
    * @param {string} newLetter - New target letter
    */
@@ -95,12 +144,36 @@ class SignDetectionManager {
 
     console.log('🔄 Updating target letter from', this.currentTargetLetter, 'to', newLetter);
     this.currentTargetLetter = newLetter;
+    this.currentTargetWord = null;
+    this.detectionMode = 'letter';
     this.lastDetectedLetter = null;
     this.consecutiveDetections = 0;
 
     // Send new letter to backend
     if (this.wsConnected) {
       WebSocketService.sendNewLetter(newLetter);
+    }
+  }
+
+  /**
+   * Update target word without stopping detection
+   * @param {string} newWord - New target word
+   */
+  updateTargetWord(newWord) {
+    if (this.currentTargetWord === newWord) {
+      return;
+    }
+
+    console.log('🔄 Updating target word from', this.currentTargetWord, 'to', newWord);
+    this.currentTargetWord = newWord;
+    this.currentTargetLetter = null;
+    this.detectionMode = 'word';
+    this.lastDetectedWord = null;
+    this.consecutiveDetections = 0;
+
+    // Send new word to backend
+    if (this.wsConnected) {
+      WebSocketService.sendNewWord(newWord);
     }
   }
 
@@ -121,35 +194,49 @@ class SignDetectionManager {
    * Handle recognition result from backend
    */
   handleRecognitionResult(data) {
-    const { maxarg_letter, target_arg_prob } = data;
+    const { maxarg_letter, maxarg_word, target_arg_prob } = data;
 
-    if (!this.isActive || !this.currentTargetLetter) {
+    if (!this.isActive) {
       return;
     }
 
+    // Handle based on detection mode
+    if (this.detectionMode === 'word') {
+      this.handleWordRecognition(maxarg_word || maxarg_letter, target_arg_prob);
+    } else {
+      this.handleLetterRecognition(maxarg_letter || maxarg_word, target_arg_prob);
+    }
+  }
+
+  /**
+   * Handle letter recognition
+   */
+  handleLetterRecognition(detectedValue, confidence) {
+    if (!this.currentTargetLetter) return;
+
     // Log recognition result
     if (this.debugMode) {
-      console.log('🤖 Recognition result:', {
+      console.log('🤖 Letter recognition result:', {
         targetLetter: this.currentTargetLetter,
-        detectedLetter: maxarg_letter,
-        confidence: `${(target_arg_prob * 100).toFixed(1)}%`,
+        detectedLetter: detectedValue,
+        confidence: `${(confidence * 100).toFixed(1)}%`,
         threshold: `${(this.confidenceThreshold * 100).toFixed(1)}%`
       });
     }
 
     // Update confidence callback
     if (this.callbacks.onConfidenceUpdate) {
-      this.callbacks.onConfidenceUpdate(target_arg_prob, maxarg_letter);
+      this.callbacks.onConfidenceUpdate(confidence, detectedValue);
     }
 
     // Check if detected letter matches target with sufficient confidence
-    if (maxarg_letter === this.currentTargetLetter && target_arg_prob >= this.confidenceThreshold) {
-      if (maxarg_letter === this.lastDetectedLetter) {
+    if (detectedValue === this.currentTargetLetter && confidence >= this.confidenceThreshold) {
+      if (detectedValue === this.lastDetectedLetter) {
         this.consecutiveDetections++;
         console.log(`✓ Consecutive detection ${this.consecutiveDetections}/${this.requiredConsecutiveDetections}`);
       } else {
         this.consecutiveDetections = 1;
-        this.lastDetectedLetter = maxarg_letter;
+        this.lastDetectedLetter = detectedValue;
       }
 
       // Check if we have enough consecutive detections
@@ -166,9 +253,61 @@ class SignDetectionManager {
       }
     } else {
       // Reset consecutive count if different letter or low confidence
-      if (this.lastDetectedLetter !== maxarg_letter) {
+      if (this.lastDetectedLetter !== detectedValue) {
         this.consecutiveDetections = 0;
         this.lastDetectedLetter = null;
+      }
+    }
+  }
+
+  /**
+   * Handle word recognition
+   */
+  handleWordRecognition(detectedValue, confidence) {
+    if (!this.currentTargetWord) return;
+
+    // Log recognition result
+    if (this.debugMode) {
+      console.log('🤖 Word recognition result:', {
+        targetWord: this.currentTargetWord,
+        detectedWord: detectedValue,
+        confidence: `${(confidence * 100).toFixed(1)}%`,
+        threshold: `${(this.confidenceThreshold * 100).toFixed(1)}%`
+      });
+    }
+
+    // Update confidence callback
+    if (this.callbacks.onConfidenceUpdate) {
+      this.callbacks.onConfidenceUpdate(confidence, detectedValue);
+    }
+
+    // Check if detected word matches target with sufficient confidence
+    if (detectedValue === this.currentTargetWord && confidence >= this.confidenceThreshold) {
+      if (detectedValue === this.lastDetectedWord) {
+        this.consecutiveDetections++;
+        console.log(`✓ Consecutive word detection ${this.consecutiveDetections}/${this.requiredConsecutiveDetections}`);
+      } else {
+        this.consecutiveDetections = 1;
+        this.lastDetectedWord = detectedValue;
+      }
+
+      // Check if we have enough consecutive detections
+      if (this.consecutiveDetections >= this.requiredConsecutiveDetections) {
+        console.log('✅ Word detected successfully:', this.currentTargetWord);
+
+        if (this.callbacks.onWordDetected) {
+          this.callbacks.onWordDetected(this.currentTargetWord);
+        }
+
+        // Reset for next word
+        this.consecutiveDetections = 0;
+        this.lastDetectedWord = null;
+      }
+    } else {
+      // Reset consecutive count if different word or low confidence
+      if (this.lastDetectedWord !== detectedValue) {
+        this.consecutiveDetections = 0;
+        this.lastDetectedWord = null;
       }
     }
   }
@@ -184,9 +323,13 @@ class SignDetectionManager {
       this.callbacks.onConnectionChange(true);
     }
 
-    // Send current target letter if detection is active
-    if (this.isActive && this.currentTargetLetter) {
-      WebSocketService.sendNewLetter(this.currentTargetLetter);
+    // Send current target based on detection mode
+    if (this.isActive) {
+      if (this.detectionMode === 'word' && this.currentTargetWord) {
+        WebSocketService.sendNewWord(this.currentTargetWord);
+      } else if (this.detectionMode === 'letter' && this.currentTargetLetter) {
+        WebSocketService.sendNewLetter(this.currentTargetLetter);
+      }
     }
   }
 
@@ -222,7 +365,9 @@ class SignDetectionManager {
 
     this.isActive = false;
     this.currentTargetLetter = null;
+    this.currentTargetWord = null;
     this.lastDetectedLetter = null;
+    this.lastDetectedWord = null;
     this.consecutiveDetections = 0;
 
     // Stop frame capture
@@ -252,7 +397,9 @@ class SignDetectionManager {
     return {
       isActive: this.isActive,
       isConnected: this.wsConnected,
+      detectionMode: this.detectionMode,
       currentTargetLetter: this.currentTargetLetter,
+      currentTargetWord: this.currentTargetWord,
       captureStats: FrameCapture.getStats()
     };
   }

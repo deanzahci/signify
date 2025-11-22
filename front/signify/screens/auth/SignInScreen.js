@@ -152,16 +152,16 @@ const styles = StyleSheet.create({
   logoText: {
     color: colors.brutalWhite,
     fontSize: 48,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-ExtraBold',
   },
   appTitle: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-ExtraBold',
     color: colors.brutalBlack,
   },
   appSubtitle: {
     fontSize: 14,
-    fontFamily: 'monospace',
+    fontFamily: 'Sora-Regular',
     color: colors.brutalBlack,
     marginTop: 8,
   },
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
   },
   formTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
     marginBottom: 24,
   },
@@ -188,7 +188,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-SemiBold',
     color: colors.brutalBlack,
     marginBottom: 8,
   },
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    fontFamily: 'monospace',
+    fontFamily: 'Sora-Regular',
     backgroundColor: colors.brutalWhite,
     shadowColor: colors.brutalBlack,
     shadowOffset: { width: 2, height: 2 },
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: colors.brutalWhite,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
   },
   secondaryButton: {
     backgroundColor: colors.brutalWhite,
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   secondaryButtonText: {
     color: colors.brutalBlack,
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     marginLeft: 8,
   },
   dividerContainer: {
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   dividerText: {
     marginHorizontal: 16,
     fontSize: 12,
-    fontFamily: 'monospace',
+    fontFamily: 'Sora-Regular',
     color: colors.brutalBlack,
   },
   footer: {
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    fontFamily: 'monospace',
+    fontFamily: 'Sora-Regular',
     color: colors.brutalBlack,
     marginBottom: 16,
   },
@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   createAccountButtonText: {
     color: colors.brutalBlack,
     fontSize: 14,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
   },
 });
 

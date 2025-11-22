@@ -14,7 +14,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { colors } from '../styles/colors';
+import { useThemedColors, useThemedShadow } from '../hooks/useThemedColors';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -22,6 +24,8 @@ import { formatLeaderboardValue } from '../services/leaderboardService';
 
 const ProfileScreen = () => {
   const { user, signOut } = useAuth();
+  const { isDarkMode, themeMode, toggleTheme } = useTheme();
+  const themedColors = useThemedColors();
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -178,6 +182,20 @@ const ProfileScreen = () => {
     );
   };
 
+  // Get theme icon based on current mode
+  const getThemeIcon = () => {
+    if (themeMode === 'light') return 'sunny';
+    if (themeMode === 'dark') return 'moon';
+    return 'phone-portrait-outline'; // system
+  };
+
+  // Get theme label based on current mode
+  const getThemeLabel = () => {
+    if (themeMode === 'light') return 'LIGHT';
+    if (themeMode === 'dark') return 'DARK';
+    return 'SYSTEM';
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -189,18 +207,25 @@ const ProfileScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content}>
+    <SafeAreaView style={[styles.container, isDarkMode && { backgroundColor: themedColors.brutalBackground }]}>
+      <ScrollView style={[styles.content, isDarkMode && { backgroundColor: themedColors.brutalBackground }]}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>PROFILE</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, isDarkMode && { color: themedColors.brutalText }]}>PROFILE</Text>
+          <Text style={[styles.subtitle, isDarkMode && { color: themedColors.brutalTextSecondary }]}>
             Your account details
           </Text>
         </View>
 
         {/* Profile Card */}
-        <View style={styles.profileCard}>
+        <View style={[
+          styles.profileCard,
+          isDarkMode && {
+            backgroundColor: themedColors.brutalSurface,
+            borderColor: themedColors.brutalBorder,
+            shadowColor: themedColors.brutalShadow,
+          }
+        ]}>
           <View style={styles.profileHeader}>
             <TouchableOpacity
               onPress={handleEditProfilePicture}
@@ -212,58 +237,83 @@ const ProfileScreen = () => {
                   <ActivityIndicator size="large" color={colors.brutalWhite} />
                 </View>
               ) : userData?.photoURL || user?.picture ? (
-                <View style={styles.profileImageContainer}>
+                <View style={[
+                  styles.profileImageContainer,
+                  isDarkMode && {
+                    borderColor: themedColors.brutalBorder,
+                    shadowColor: themedColors.brutalShadow,
+                  }
+                ]}>
                   <Image
                     source={{ uri: userData?.photoURL || user?.picture }}
                     style={styles.profileImage}
                   />
-                  <View style={styles.editBadge}>
+                  <View style={[
+                    styles.editBadge,
+                    isDarkMode && {
+                      backgroundColor: themedColors.brutalBlue,
+                      borderColor: themedColors.brutalBorder,
+                    }
+                  ]}>
                     <Ionicons name="camera" size={16} color={colors.brutalWhite} />
                   </View>
                 </View>
               ) : (
-                <View style={styles.profileIconContainer}>
+                <View style={[
+                  styles.profileIconContainer,
+                  isDarkMode && {
+                    backgroundColor: themedColors.brutalBlue,
+                    borderColor: themedColors.brutalBorder,
+                    shadowColor: themedColors.brutalShadow,
+                  }
+                ]}>
                   <Ionicons name="person" size={40} color={colors.brutalWhite} />
-                  <View style={styles.editBadge}>
+                  <View style={[
+                    styles.editBadge,
+                    isDarkMode && {
+                      backgroundColor: themedColors.brutalPurple,
+                      borderColor: themedColors.brutalBorder,
+                    }
+                  ]}>
                     <Ionicons name="camera" size={16} color={colors.brutalWhite} />
                   </View>
                 </View>
               )}
             </TouchableOpacity>
 
-            <Text style={styles.profileName}>
+            <Text style={[styles.profileName, isDarkMode && { color: themedColors.brutalText }]}>
               {userData?.name || user?.name || 'Guest User'}
             </Text>
-            <Text style={styles.profileEmail}>
+            <Text style={[styles.profileEmail, isDarkMode && { color: themedColors.brutalTextSecondary }]}>
               {userData?.email || user?.email || 'Not signed in'}
             </Text>
           </View>
 
           {/* User Stats */}
-          <View style={styles.divider} />
+          <View style={[styles.divider, isDarkMode && { backgroundColor: themedColors.brutalBorder }]} />
           <View style={styles.statsSection}>
             <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Member Since:</Text>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statLabel, isDarkMode && { color: themedColors.brutalTextSecondary }]}>Member Since:</Text>
+              <Text style={[styles.statValue, isDarkMode && { color: themedColors.brutalText }]}>
                 {formatDate(userData?.createdAt)}
               </Text>
             </View>
             <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Quiz Highscore:</Text>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statLabel, isDarkMode && { color: themedColors.brutalTextSecondary }]}>Quiz Highscore:</Text>
+              <Text style={[styles.statValue, isDarkMode && { color: themedColors.brutalText }]}>
                 {formatLeaderboardValue('highScoreQuiz', userData?.highScoreQuiz || 0)}
               </Text>
             </View>
             <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Speed Highscore:</Text>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statLabel, isDarkMode && { color: themedColors.brutalTextSecondary }]}>Speed Highscore:</Text>
+              <Text style={[styles.statValue, isDarkMode && { color: themedColors.brutalText }]}>
                 {formatLeaderboardValue('highScoreSpeed', userData?.highScoreSpeed || 0)}
               </Text>
             </View>
-            
+
             <View style={styles.statRow}>
-              <Text style={styles.statLabel}>Games Played:</Text>
-              <Text style={styles.statValue}>
+              <Text style={[styles.statLabel, isDarkMode && { color: themedColors.brutalTextSecondary }]}>Games Played:</Text>
+              <Text style={[styles.statValue, isDarkMode && { color: themedColors.brutalText }]}>
                 {userData?.gamesPlayed || 0} games
               </Text>
             </View>
@@ -271,41 +321,96 @@ const ProfileScreen = () => {
         </View>
 
         {/* Settings */}
-        <View style={styles.settingsCard}>
-          <Text style={styles.settingsTitle}>SETTINGS</Text>
+        <View style={[
+          styles.settingsCard,
+          isDarkMode && {
+            backgroundColor: themedColors.brutalSurface,
+            borderColor: themedColors.brutalBorder,
+            shadowColor: themedColors.brutalShadow,
+          }
+        ]}>
+          <Text style={[styles.settingsTitle, isDarkMode && { color: themedColors.brutalText }]}>SETTINGS</Text>
 
-          <TouchableOpacity style={styles.settingsItem}>
+          <TouchableOpacity
+            style={styles.settingsItem}
+            onPress={() => Alert.alert('We collect all your data')}
+          >
             <View style={styles.settingsItemLeft}>
-              <Ionicons name="notifications" size={20} color={colors.brutalBlack} />
-              <Text style={styles.settingsItemText}>Notifications</Text>
+              <Ionicons name="shield" size={20} color={isDarkMode ? themedColors.brutalText : colors.brutalBlack} />
+              <Text style={[styles.settingsItemText, isDarkMode && { color: themedColors.brutalText }]}>Privacy</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.brutalBlack} />
+            <Ionicons name="chevron-forward" size={20} color={isDarkMode ? themedColors.brutalTextSecondary : colors.brutalBlack} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.settingsItem}>
+          <TouchableOpacity
+            style={[styles.settingsItem, styles.lastSettingsItem]}
+            onPress={() => Alert.alert('Help:', "Good luck")}
+          >
             <View style={styles.settingsItemLeft}>
-              <Ionicons name="shield" size={20} color={colors.brutalBlack} />
-              <Text style={styles.settingsItemText}>Privacy</Text>
+              <Ionicons name="help-circle" size={20} color={isDarkMode ? themedColors.brutalText : colors.brutalBlack} />
+              <Text style={[styles.settingsItemText, isDarkMode && { color: themedColors.brutalText }]}>Help</Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.brutalBlack} />
+            <Ionicons name="chevron-forward" size={20} color={isDarkMode ? themedColors.brutalTextSecondary : colors.brutalBlack} />
           </TouchableOpacity>
+        </View>
 
-          <TouchableOpacity style={[styles.settingsItem, styles.lastSettingsItem]}>
+        {/* Theme Settings */}
+        <View style={[
+          styles.settingsCard,
+          isDarkMode && {
+            backgroundColor: themedColors.brutalSurface,
+            borderColor: themedColors.brutalBorder,
+            shadowColor: themedColors.brutalShadow,
+          }
+        ]}>
+          <Text style={[styles.settingsTitle, isDarkMode && { color: themedColors.brutalText }]}>APPEARANCE</Text>
+
+          <TouchableOpacity
+            style={[styles.settingsItem, styles.lastSettingsItem]}
+            onPress={toggleTheme}
+          >
             <View style={styles.settingsItemLeft}>
-              <Ionicons name="help-circle" size={20} color={colors.brutalBlack} />
-              <Text style={styles.settingsItemText}>Help</Text>
+              <Ionicons
+                name={getThemeIcon()}
+                size={20}
+                color={isDarkMode ? themedColors.brutalText : colors.brutalBlack}
+              />
+              <Text style={[
+                styles.settingsItemText,
+                isDarkMode && { color: themedColors.brutalText }
+              ]}>
+                Theme
+              </Text>
             </View>
-            <Ionicons name="chevron-forward" size={20} color={colors.brutalBlack} />
+            <View style={[
+              styles.themeBadge,
+              isDarkMode && {
+                backgroundColor: themedColors.brutalBlue,
+                borderColor: themedColors.brutalBorder,
+                shadowColor: themedColors.brutalShadow,
+              }
+            ]}>
+              <Text style={styles.themeBadgeText}>
+                {getThemeLabel()}
+              </Text>
+            </View>
           </TouchableOpacity>
         </View>
 
         {/* Sign Out Button */}
         <TouchableOpacity
           onPress={handleSignOut}
-          style={styles.signOutButton}
+          style={[
+            styles.signOutButton,
+            isDarkMode && {
+              backgroundColor: themedColors.brutalRed,
+              borderColor: themedColors.brutalBorder,
+              shadowColor: themedColors.brutalShadow,
+            }
+          ]}
           activeOpacity={0.9}
         >
-          <Ionicons name="log-out" size={20} color={colors.brutalWhite} />
+          <Ionicons name="log-out" size={20} color={isDarkMode ? colors.dark.brutalWhite : colors.brutalWhite} />
           <Text style={styles.signOutButtonText}>SIGN OUT</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -332,12 +437,12 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 32,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
   },
   subtitle: {
     fontSize: 14,
-    fontFamily: 'monospace',
+    fontFamily: 'Sora-Regular',
     color: colors.brutalBlack,
     marginTop: 8,
   },
@@ -412,12 +517,12 @@ const styles = StyleSheet.create({
   },
   profileName: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
   },
   profileEmail: {
     fontSize: 14,
-    fontFamily: 'monospace',
+    fontFamily: 'Sora-Regular',
     color: colors.brutalBlack,
     marginTop: 4,
   },
@@ -436,12 +541,12 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 14,
-    fontFamily: 'monospace',
+    fontFamily: 'Sora-Regular',
     color: colors.brutalBlack,
   },
   statValue: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
   },
   settingsCard: {
@@ -458,7 +563,7 @@ const styles = StyleSheet.create({
   },
   settingsTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
     marginBottom: 12,
   },
@@ -480,7 +585,7 @@ const styles = StyleSheet.create({
   settingsItemText: {
     marginLeft: 12,
     fontSize: 14,
-    fontFamily: 'monospace',
+    fontFamily: 'Sora-Regular',
     color: colors.brutalBlack,
   },
   signOutButton: {
@@ -501,8 +606,26 @@ const styles = StyleSheet.create({
   },
   signOutButtonText: {
     color: colors.brutalWhite,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     marginLeft: 8,
+  },
+  themeBadge: {
+    backgroundColor: colors.brutalBlue,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderWidth: 2,
+    borderColor: colors.brutalBlack,
+    shadowColor: colors.brutalBlack,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 2,
+  },
+  themeBadgeText: {
+    color: colors.brutalWhite,
+    fontSize: 12,
+    fontWeight: 'bold',
+    fontFamily: 'monospace',
   },
 });
 

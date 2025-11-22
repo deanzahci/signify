@@ -1,12 +1,25 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { ThemeWrapper } from './components/ThemeWrapper';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from './styles/colors';
+import {
+  useFonts,
+  Sora_400Regular as SoraRegular,
+  Sora_600SemiBold as SoraSemiBold,
+  Sora_700Bold as SoraBold,
+  Sora_800ExtraBold as SoraExtraBold
+} from '@expo-google-fonts/sora';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
 
 // Screens
 import SignInScreen from './screens/auth/SignInScreen';
@@ -19,6 +32,8 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
 const TabNavigator = () => {
+  const { isDarkMode } = useTheme();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -35,16 +50,16 @@ const TabNavigator = () => {
 
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: '#0066FF',
-        tabBarInactiveTintColor: '#000000',
+        tabBarActiveTintColor: isDarkMode ? colors.dark.brutalBlue : '#0066FF',
+        tabBarInactiveTintColor: isDarkMode ? colors.dark.brutalTextSecondary : '#000000',
         tabBarLabelStyle: {
-          fontWeight: 'bold',
+          fontFamily: 'Sora-Bold',
           fontSize: 12,
         },
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: isDarkMode ? colors.dark.brutalSurface : '#FFFFFF',
           borderTopWidth: 3,
-          borderTopColor: '#000000',
+          borderTopColor: isDarkMode ? colors.dark.brutalBorder : '#000000',
           height: 85,
           paddingBottom: 10,
           paddingTop: 10,
@@ -64,12 +79,23 @@ const TabNavigator = () => {
 
 const AppNavigator = () => {
   const { isAuthenticated, loading } = useAuth();
+  const { isDarkMode } = useTheme();
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color="#FFFFFF" />
+      <View style={[
+        styles.loadingContainer,
+        isDarkMode && { backgroundColor: colors.dark.brutalBackground }
+      ]}>
+        <View style={[
+          styles.loadingBox,
+          isDarkMode && {
+            backgroundColor: colors.dark.brutalBlue,
+            borderColor: colors.dark.brutalBorder,
+            shadowColor: colors.dark.brutalShadow,
+          }
+        ]}>
+          <ActivityIndicator size="large" color={isDarkMode ? colors.dark.brutalWhite : "#FFFFFF"} />
         </View>
       </View>
     );
@@ -79,11 +105,11 @@ const AppNavigator = () => {
     <Stack.Navigator
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: isDarkMode ? colors.dark.brutalSurface : '#FFFFFF',
         },
-        headerTintColor: '#000000',
+        headerTintColor: isDarkMode ? colors.dark.brutalText : '#000000',
         headerTitleStyle: {
-          fontWeight: 'bold',
+          fontFamily: 'Sora-Bold',
         },
         headerShadowVisible: false,
         headerBackTitleVisible: false,
@@ -112,7 +138,7 @@ const AppNavigator = () => {
             options={{
               title: '',
               headerStyle: {
-                backgroundColor: '#FFFFFF',
+                backgroundColor: isDarkMode ? colors.dark.brutalSurface : '#FFFFFF',
               },
               headerShadowVisible: false,
             }}
@@ -123,14 +149,45 @@ const AppNavigator = () => {
   );
 };
 
-export default function App() {
+const AppContent = ({ onLayoutRootView }) => {
+  const { isDarkMode } = useTheme();
+
   return (
-    <AuthProvider>
-      <NavigationContainer>
-        <StatusBar style="dark" />
+    <ThemeWrapper style={{ backgroundColor: isDarkMode ? colors.dark.brutalBackground : colors.brutalWhite }}>
+      <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
+        <StatusBar style={isDarkMode ? "light" : "dark"} />
         <AppNavigator />
-      </NavigationContainer>
-    </AuthProvider>
+      </View>
+    </ThemeWrapper>
+  );
+};
+
+export default function App() {
+  const [fontsLoaded] = useFonts({
+    'Sora-Regular': SoraRegular,
+    'Sora-SemiBold': SoraSemiBold,
+    'Sora-Bold': SoraBold,
+    'Sora-ExtraBold': SoraExtraBold,
+  });
+
+  const onLayoutRootView = useCallback(async () => {
+    if (fontsLoaded) {
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
+
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <NavigationContainer>
+          <AppContent onLayoutRootView={onLayoutRootView} />
+        </NavigationContainer>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 

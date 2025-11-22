@@ -22,6 +22,11 @@ const config = {
 
   // Recognition Settings
   recognition: {
+    // Detection mode: 'letter' or 'word'
+    // 'letter' - detect individual letters
+    // 'word' - detect complete words
+    defaultMode: 'word', // Change to 'letter' for letter-by-letter detection
+
     // Confidence threshold for accepting a sign (0-1)
     confidenceThreshold: 0.8, // 80% confidence required
 
@@ -30,6 +35,18 @@ const config = {
 
     // Timeout for single letter detection (ms)
     detectionTimeout: 5000,
+
+    // Word detection specific settings
+    wordMode: {
+      // Enable word detection features
+      enabled: true,
+
+      // Minimum confidence for word acceptance
+      wordConfidenceThreshold: 0.75,
+
+      // Number of consecutive word detections required
+      requiredConsecutiveWordDetections: 2,
+    },
   },
 
   // Camera Settings

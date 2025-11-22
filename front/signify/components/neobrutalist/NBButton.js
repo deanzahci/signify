@@ -1,5 +1,9 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
+import { Text, ActivityIndicator, View, TouchableWithoutFeedback } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import * as Haptics from 'expo-haptics';
+import { useTheme } from '../../context/ThemeContext';
+import { colors } from '../../styles/colors';
 
 const NBButton = ({
   title,
@@ -13,23 +17,71 @@ const NBButton = ({
   textClassName = '',
   ...props
 }) => {
+  const { isDarkMode } = useTheme();
+
+  // Animation values
+  const scale = useSharedValue(1);
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const shadowOpacity = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: scale.value },
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+    ],
+  }));
+
+  const shadowStyle = useAnimatedStyle(() => ({
+    opacity: shadowOpacity.value,
+  }));
+
+  const handlePressIn = () => {
+    if (!disabled && !loading) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      scale.value = withTiming(0.97, { duration: 80 });
+      translateX.value = withTiming(3, { duration: 80 });
+      translateY.value = withTiming(3, { duration: 80 });
+      shadowOpacity.value = withTiming(0, { duration: 80 });
+    }
+  };
+
+  const handlePressOut = () => {
+    if (!disabled && !loading) {
+      scale.value = withTiming(1, { duration: 100 });
+      translateX.value = withTiming(0, { duration: 100 });
+      translateY.value = withTiming(0, { duration: 100 });
+      shadowOpacity.value = withTiming(1, { duration: 100 });
+    }
+  };
   const getVariantClasses = () => {
     const variants = {
-      primary: 'bg-brutal-blue border-brutal-black',
-      secondary: 'bg-brutal-white border-brutal-black',
-      danger: 'bg-brutal-red border-brutal-black',
-      success: 'bg-brutal-green border-brutal-black',
-      warning: 'bg-brutal-yellow border-brutal-black',
+      primary: isDarkMode
+        ? 'bg-brutal-dark-blue border-brutal-dark-border'
+        : 'bg-brutal-blue border-brutal-black',
+      secondary: isDarkMode
+        ? 'bg-brutal-dark-surface border-brutal-dark-border'
+        : 'bg-brutal-white border-brutal-black',
+      danger: isDarkMode
+        ? 'bg-brutal-dark-red border-brutal-dark-border'
+        : 'bg-brutal-red border-brutal-black',
+      success: isDarkMode
+        ? 'bg-brutal-dark-green border-brutal-dark-border'
+        : 'bg-brutal-green border-brutal-black',
+      warning: isDarkMode
+        ? 'bg-brutal-dark-yellow border-brutal-dark-border'
+        : 'bg-brutal-yellow border-brutal-black',
     };
     return variants[variant] || variants.primary;
   };
 
   const getTextColorClass = () => {
     const textColors = {
-      primary: 'text-brutal-white',
-      secondary: 'text-brutal-black',
-      danger: 'text-brutal-white',
-      success: 'text-brutal-white',
+      primary: isDarkMode ? 'text-brutal-dark-white' : 'text-brutal-white',
+      secondary: isDarkMode ? 'text-brutal-dark-text' : 'text-brutal-black',
+      danger: isDarkMode ? 'text-brutal-dark-white' : 'text-brutal-white',
+      success: isDarkMode ? 'text-brutal-dark-white' : 'text-brutal-white',
       warning: 'text-brutal-black',
     };
     return textColors[variant] || textColors.primary;
@@ -58,44 +110,65 @@ const NBButton = ({
   const isDisabled = disabled || loading;
 
   return (
-    <TouchableOpacity
+    <TouchableWithoutFeedback
       onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       disabled={isDisabled}
-      activeOpacity={0.9}
-      className={`
-        ${getVariantClasses()}
-        ${getSizeClasses()}
-        border-brutal
-        shadow-brutal
-        flex-row
-        items-center
-        justify-center
-        ${!isDisabled ? 'active:translate-x-1 active:translate-y-1 active:shadow-none' : 'opacity-50'}
-        ${className}
-      `}
-      {...props}
     >
-      {loading ? (
-        <ActivityIndicator
-          size="small"
-          color={variant === 'secondary' || variant === 'warning' ? '#000000' : '#FFFFFF'}
+      <Animated.View
+        style={[animatedStyle]}
+        className={`
+          ${getVariantClasses()}
+          ${getSizeClasses()}
+          border-brutal
+          flex-row
+          items-center
+          justify-center
+          ${isDisabled ? 'opacity-50' : ''}
+          ${className}
+        `}
+        {...props}
+      >
+        {/* Shadow layer */}
+        <Animated.View
+          style={[
+            {
+              position: 'absolute',
+              top: 6,
+              left: 6,
+              right: -6,
+              bottom: -6,
+              backgroundColor: isDarkMode ? colors.dark.brutalShadow : '#000000',
+              borderRadius: 0,
+              zIndex: -1,
+            },
+            shadowStyle
+          ]}
         />
-      ) : (
-        <View className="flex-row items-center gap-2">
-          {icon && icon}
-          <Text
-            className={`
-              font-bold
-              ${getTextColorClass()}
-              ${getTextSizeClass()}
-              ${textClassName}
-            `}
-          >
-            {title}
-          </Text>
-        </View>
-      )}
-    </TouchableOpacity>
+
+        {loading ? (
+          <ActivityIndicator
+            size="small"
+            color={variant === 'secondary' || variant === 'warning' ? '#000000' : '#FFFFFF'}
+          />
+        ) : (
+          <View className="flex-row items-center gap-2">
+            {icon && icon}
+            <Text
+              className={`
+                font-bold
+                ${getTextColorClass()}
+                ${getTextSizeClass()}
+                ${textClassName}
+              `}
+            >
+              {title}
+            </Text>
+          </View>
+        )}
+      </Animated.View>
+    </TouchableWithoutFeedback>
   );
 };
 

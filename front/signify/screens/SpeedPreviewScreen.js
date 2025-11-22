@@ -3,6 +3,9 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCameraPermissions } from 'expo-camera';
 import { colors } from '../styles/colors';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedColors, useThemedShadow } from '../hooks/useThemedColors';
+import { NBIcon } from '../components/NeoBrutalistIcons';
 
 const SpeedPreviewScreen = ({
   quizQuestion,
@@ -14,6 +17,9 @@ const SpeedPreviewScreen = ({
   onStartGame,
   onGoBack
 }) => {
+  const { isDarkMode } = useTheme();
+  const themedColors = useThemedColors();
+  const shadowStyle = useThemedShadow('medium');
   const [permission, requestPermission] = useCameraPermissions();
 
   const handleStartGame = async () => {
@@ -53,33 +59,68 @@ const SpeedPreviewScreen = ({
 
   if (!quizQuestion) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading words...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: themedColors.brutalWhite }]}>
+        <NBIcon name="Lightning" size={48} color={themedColors.brutalBlack} />
+        <Text style={[styles.loadingText, { color: themedColors.brutalBlack }]}>Loading words...</Text>
       </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: themedColors.brutalWhite }]}>
       <ScrollView style={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.gameHeader}>
-          <TouchableOpacity style={styles.backButton} onPress={onGoBack}>
-            <Text style={styles.backButtonText}>← BACK</Text>
+          <TouchableOpacity
+            style={[
+              styles.backButton,
+              {
+                backgroundColor: themedColors.brutalWhite,
+                borderColor: themedColors.brutalBlack,
+                ...shadowStyle
+              }
+            ]}
+            onPress={onGoBack}
+          >
+            <Text style={[styles.backButtonText, { color: themedColors.brutalBlack }]}>← BACK</Text>
           </TouchableOpacity>
-          <View style={styles.scoreContainer}>
-            <Text style={styles.scoreLabel}>SCORE</Text>
-            <Text style={styles.scoreValue}>{typingScore}</Text>
+          <View style={[
+            styles.scoreContainer,
+            {
+              backgroundColor: themedColors.brutalYellow,
+              borderColor: themedColors.brutalBlack,
+              ...shadowStyle
+            }
+          ]}>
+            <Text style={[styles.scoreLabel, { color: themedColors.brutalBlack }]}>SCORE</Text>
+            <Text style={[styles.scoreValue, { color: themedColors.brutalBlack }]}>{typingScore}</Text>
           </View>
         </View>
 
-        <Text style={styles.gameTitle}>SIGNSPEED</Text>
-        <Text style={styles.gameSubtitle}>Level {userLevelSpeed} - Word {currentWordIndex + 1}/{typingWords.length}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+          <NBIcon name="Lightning" size={36} color={themedColors.brutalBlack} />
+          <Text style={[styles.gameTitle, { color: themedColors.brutalBlack }]}>SIGNSPEED</Text>
+        </View>
+        <Text style={[styles.gameSubtitle, { color: themedColors.brutalBlack }]}>Level {userLevelSpeed} - Word {currentWordIndex + 1}/{typingWords.length}</Text>
 
         {/* Mode Description Card */}
-        <View style={[styles.quizCard, { backgroundColor: colors.brutalGreen, marginBottom: 20 }]}>
-          <Text style={[styles.quizCardLabel, { color: colors.brutalWhite }]}>⚡ ABOUT SIGNSPEED</Text>
-          <Text style={[styles.instructionText, { color: colors.brutalWhite, marginTop: 8 }]}>
+        <View style={[
+          styles.quizCard,
+          {
+            backgroundColor: themedColors.brutalGreen,
+            borderColor: themedColors.brutalBlack,
+            marginBottom: 20,
+            ...shadowStyle
+          }
+        ]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+            <NBIcon name="Target" size={20} color={isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite} />
+            <Text style={[
+              styles.quizCardLabel,
+              { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite, marginLeft: 8 }
+            ]}>ABOUT SIGNSPEED</Text>
+          </View>
+          <Text style={[styles.instructionText, { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite, marginTop: 8 }]}>
             • Race against the {typingTimer}-second timer{'\n'}
             • Sign each word letter by letter{'\n'}
             • Letters and words are shown{'\n'}
@@ -88,18 +129,36 @@ const SpeedPreviewScreen = ({
         </View>
 
         {/* Timer Info Card */}
-        <View style={[styles.quizCard, { backgroundColor: colors.brutalYellow, marginBottom: 20 }]}>
-          <Text style={styles.quizCardLabel}>⏱️ TIMER</Text>
-          <Text style={[styles.quizLetterCount, { fontSize: 48 }]}>{typingTimer} seconds</Text>
+        <View style={[
+          styles.quizCard,
+          {
+            backgroundColor: themedColors.brutalYellow,
+            borderColor: themedColors.brutalBlack,
+            marginBottom: 20,
+            ...shadowStyle
+          }
+        ]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+            <NBIcon name="Lightning" size={20} color={themedColors.brutalBlack} />
+            <Text style={[styles.quizCardLabel, { color: themedColors.brutalBlack, marginLeft: 8 }]}>TIMER</Text>
+          </View>
+          <Text style={[styles.quizLetterCount, { fontSize: 48, color: themedColors.brutalBlack }]}>{typingTimer} seconds</Text>
         </View>
 
         {/* Start Button */}
         <TouchableOpacity
-          style={[styles.submitButton, { backgroundColor: colors.brutalGreen }]}
+          style={[
+            styles.submitButton,
+            {
+              backgroundColor: themedColors.brutalGreen,
+              borderColor: themedColors.brutalBlack,
+              ...shadowStyle
+            }
+          ]}
           onPress={handleStartGame}
           activeOpacity={0.9}
         >
-          <Text style={styles.submitButtonText}>START</Text>
+          <Text style={[styles.submitButtonText, { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }]}>START</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -124,7 +183,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
     textAlign: 'center',
     marginBottom: 12,
@@ -150,7 +209,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
   },
   scoreContainer: {
@@ -167,24 +226,24 @@ const styles = StyleSheet.create({
   },
   scoreLabel: {
     fontSize: 10,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
   },
   scoreValue: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
   },
   gameTitle: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
     marginBottom: 8,
     letterSpacing: 1,
   },
   gameSubtitle: {
     fontSize: 16,
-    fontFamily: 'monospace',
+    fontFamily: 'Sora-Regular',
     color: colors.brutalBlack,
     marginBottom: 24,
   },
@@ -203,20 +262,20 @@ const styles = StyleSheet.create({
   },
   quizCardLabel: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
     marginBottom: 8,
     letterSpacing: 1,
   },
   quizLetterCount: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
     marginBottom: 12,
   },
   instructionText: {
     fontSize: 14,
-    fontFamily: 'monospace',
+    fontFamily: 'Sora-Regular',
     color: colors.brutalBlack,
     lineHeight: 24,
     marginBottom: 20,
@@ -234,7 +293,7 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalWhite,
     textAlign: 'center',
     letterSpacing: 1,

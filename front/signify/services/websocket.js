@@ -1,8 +1,7 @@
 /**
  * WebSocket Service for Real-Time Sign Language Recognition
  * Handles streaming video frames to backend and receiving recognition results
- * 
- * ⚠️ CURRENTLY DISABLED FOR TESTING - All functionality commented out
+ * Includes fallback support for when backend is unavailable
  */
 
 class SignLanguageWebSocket {
@@ -23,39 +22,55 @@ class SignLanguageWebSocket {
     this.sendingFrame = false;
     this.lastSentTime = 0;
     this.minFrameInterval = 100;
+    this.connectionAttempted = false;
   }
 
   /**
-   * Initialize WebSocket connection - DISABLED
+   * Initialize WebSocket connection with fallback support
    */
   connect(url, callbacks = {}) {
-    // COMMENTED OUT - WebSocket disabled for testing
-    /*
     this.wsUrl = url || 'ws://localhost:8000/ws';
     this.callbacks = { ...this.callbacks, ...callbacks };
-    console.log('📡 WebSocket Service: Checking backend availability...');
+    console.log('📡 WebSocket Service: Attempting connection to:', this.wsUrl);
+
+    // Mark that we've attempted connection
+    this.connectionAttempted = true;
 
     try {
       this.ws = new WebSocket(this.wsUrl);
       this.setupEventHandlers();
+
+      // Set a timeout for initial connection
+      setTimeout(() => {
+        if (!this.isConnected) {
+          console.log('⚠️ WebSocket connection timeout - falling back to manual mode');
+          this.handleFallback();
+        }
+      }, 3000);
     } catch (error) {
       console.log('⚠️ Backend sign detection not available - using manual mode');
-      this.isConnected = false;
-      if (this.callbacks.onError) {
-        this.callbacks.onError(error);
-      }
+      this.handleFallback();
     }
-    */
-    
-    // Just set callbacks and mark as disconnected
-    this.callbacks = { ...this.callbacks, ...callbacks };
+  }
+
+  /**
+   * Handle fallback when WebSocket is not available
+   */
+  handleFallback() {
     this.isConnected = false;
-    console.log('ℹ️ WebSocket disabled - using manual detection only');
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+
+    console.log('ℹ️ Running in offline mode - manual detection available');
+
+    if (this.callbacks.onDisconnect) {
+      this.callbacks.onDisconnect();
+    }
   }
 
   setupEventHandlers() {
-    // COMMENTED OUT - WebSocket disabled
-    /*
     if (!this.ws) return;
 
     this.ws.onopen = () => {
@@ -72,8 +87,11 @@ class SignLanguageWebSocket {
     this.ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        // Support both letter and word detection
+        const detectedValue = data.maxarg_word || data.maxarg_letter;
         console.log('📥 Sign detected:', {
-          letter: data.maxarg_letter,
+          value: detectedValue,
+          type: data.maxarg_word ? 'word' : 'letter',
           confidence: `${(data.target_arg_prob * 100).toFixed(1)}%`
         });
 
@@ -86,9 +104,16 @@ class SignLanguageWebSocket {
     };
 
     this.ws.onerror = (error) => {
+      console.log('⚠️ WebSocket error occurred - falling back to manual mode');
       this.isConnected = false;
+
       if (this.callbacks.onError) {
         this.callbacks.onError(error);
+      }
+
+      // Don't try to reconnect if this is the first connection attempt
+      if (this.reconnectAttempts === 0) {
+        this.handleFallback();
       }
     };
 
@@ -99,23 +124,24 @@ class SignLanguageWebSocket {
         this.callbacks.onDisconnect();
       }
 
-      if (!event.wasClean && this.reconnectAttempts === 0) {
+      // Only attempt reconnect if we were previously connected
+      if (!event.wasClean && this.reconnectAttempts === 0 && this.connectionAttempted) {
         this.reconnectAttempts = 1;
         setTimeout(() => {
           console.log('🔄 Retrying WebSocket connection once...');
           this.connect(this.wsUrl, this.callbacks);
         }, 2000);
+      } else {
+        console.log('ℹ️ WebSocket disconnected - manual mode available');
+        this.handleFallback();
       }
     };
-    */
   }
 
   /**
-   * Send frame and letter data to backend - DISABLED
+   * Send frame and letter data to backend
    */
   async sendFrame(jpegBlob, newLetter = null) {
-    // COMMENTED OUT - WebSocket disabled
-    /*
     if (!this.isConnected || !this.ws) {
       return false;
     }
@@ -141,18 +167,15 @@ class SignLanguageWebSocket {
       return true;
     } catch (error) {
       console.error('❌ Error sending frame:', error);
+      this.handleFallback();
       return false;
     }
-    */
-    return false;
   }
 
   /**
-   * Send a new target letter to reset backend state - DISABLED
+   * Send a new target letter to reset backend state
    */
   sendNewLetter(letter) {
-    // COMMENTED OUT - WebSocket disabled
-    /*
     if (!this.isConnected || !this.ws) {
       return false;
     }
@@ -164,21 +187,43 @@ class SignLanguageWebSocket {
 
     try {
       this.ws.send(JSON.stringify(payload));
+      console.log('📤 Sent new letter to backend:', letter);
       return true;
     } catch (error) {
       console.error('❌ Error sending new letter:', error);
+      this.handleFallback();
       return false;
     }
-    */
-    return false;
   }
 
   /**
-   * Convert Blob to base64 string - DISABLED
+   * Send a new target word to reset backend state
+   */
+  sendNewWord(word) {
+    if (!this.isConnected || !this.ws) {
+      return false;
+    }
+
+    const payload = {
+      jpeg_blob: null,
+      new_word: word
+    };
+
+    try {
+      this.ws.send(JSON.stringify(payload));
+      console.log('📤 Sent new word to backend:', word);
+      return true;
+    } catch (error) {
+      console.error('❌ Error sending new word:', error);
+      this.handleFallback();
+      return false;
+    }
+  }
+
+  /**
+   * Convert Blob to base64 string
    */
   blobToBase64(blob) {
-    // COMMENTED OUT - WebSocket disabled
-    /*
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -188,16 +233,18 @@ class SignLanguageWebSocket {
       reader.onerror = reject;
       reader.readAsDataURL(blob);
     });
-    */
-    return Promise.resolve('');
   }
 
   /**
-   * Attempt to reconnect with exponential backoff - DISABLED
+   * Attempt to reconnect with exponential backoff
    */
   attemptReconnect() {
-    // COMMENTED OUT - WebSocket disabled
-    /*
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log('❌ Max reconnection attempts reached - staying in manual mode');
+      this.handleFallback();
+      return;
+    }
+
     this.reconnectAttempts++;
     console.log(`🔄 Attempting reconnection ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`);
 
@@ -206,41 +253,35 @@ class SignLanguageWebSocket {
     }, this.reconnectDelay);
 
     this.reconnectDelay = Math.min(this.reconnectDelay * 2, 10000);
-    */
   }
 
   /**
-   * Handle connection errors - DISABLED
+   * Handle connection errors
    */
   handleConnectionError(error) {
-    // COMMENTED OUT - WebSocket disabled
-    /*
+    console.error('WebSocket connection error:', error);
     if (this.callbacks.onError) {
       this.callbacks.onError(error);
     }
-    */
   }
 
   /**
-   * Close WebSocket connection - DISABLED
+   * Close WebSocket connection
    */
   disconnect() {
-    // COMMENTED OUT - WebSocket disabled
-    /*
     if (this.ws) {
       console.log('👋 Closing WebSocket connection...');
       this.isConnected = false;
       this.ws.close();
       this.ws = null;
     }
-    */
   }
 
   /**
-   * Check if WebSocket is connected - Always returns false when disabled
+   * Check if WebSocket is connected
    */
   isConnected() {
-    return false; // Always disconnected when WebSocket is disabled
+    return this.isConnected;
   }
 }
 

@@ -1,9 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Animated } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, getDoc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedColors, useThemedShadow } from '../hooks/useThemedColors';
+import { NBIcon } from '../components/NeoBrutalistIcons';
 import { quizGame, speedGame, updateLetterStats } from '../utils/gameApi';
+import signConfig from '../config/signRecognition';
 
 // Import the 5 separate screens
 import GameSelectScreen from './GameSelectScreen';
@@ -154,9 +159,19 @@ const GameScreen = () => {
   const startQuizMode = async () => {
     console.log("Starting Quiz Mode")
 
+    // Navigate to quiz preview screen immediately for instant transition
+    setCurrentScreen('quizPreview');
+    setQuizScore(0);
+    setQuizRound(0);
+    setUsedQuizWords([]);
+    setCurrentLetterIndex(0);
+    setSignedLetters([]);
+    setQuizGameActive(false);
+    setQuizRevealWord(false);
+
     let wordsToUse = FALLBACK_WORD_BANK;
 
-    // Call game API with user data
+    // Call game API with user data (after navigation for perceived speed)
     if (user && user.id) {
       try {
         console.log('Calling quizGame API...');
@@ -210,29 +225,17 @@ const GameScreen = () => {
     // Set the API words in state
     setQuizWordsFromApi(wordsToUse);
 
-    // Navigate to quiz preview screen
-    setCurrentScreen('quizPreview');
-    setQuizScore(0);
-    setQuizRound(0);
-    setUsedQuizWords([]);
-    setCurrentLetterIndex(0);
-    setSignedLetters([]);
-    setQuizGameActive(false);
-    setQuizRevealWord(false);
-
     // Generate first question immediately with the words we just fetched
-    setTimeout(() => {
-      const availableWords = wordsToUse.filter(
-        item => !usedQuizWords.includes(item.word)
-      );
+    const availableWords = wordsToUse.filter(
+      item => ![] .includes(item.word) // Empty array since we reset usedQuizWords
+    );
 
-      if (availableWords.length > 0) {
-        const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
-        setQuizQuestion(randomWord);
-        setUsedQuizWords([randomWord.word]);
-        console.log('First quiz question set:', randomWord);
-      }
-    }, 100);
+    if (availableWords.length > 0) {
+      const randomWord = availableWords[Math.floor(Math.random() * availableWords.length)];
+      setQuizQuestion(randomWord);
+      setUsedQuizWords([randomWord.word]);
+      console.log('First quiz question set:', randomWord);
+    }
   };
 
   const generateQuizQuestion = () => {
@@ -349,25 +352,28 @@ const GameScreen = () => {
     if (!quizQuestion || isDetecting || !quizGameActive) return;
 
     setIsDetecting(true);
-    const currentLetter = quizQuestion.word[currentLetterIndex];
+
+    // Check if we're in word mode
+    const savedMode = await AsyncStorage.getItem('detectionMode');
+    const isWordMode = savedMode === 'word' || (!savedMode && signConfig.recognition.defaultMode === 'word');
 
     // Simulate detection delay (500ms)
     setTimeout(async () => {
-      const newSignedLetters = [...signedLetters, currentLetter];
-      setSignedLetters(newSignedLetters);
-      setQuizFeedback(`✅ Detected: ${currentLetter}`);
+      if (isWordMode) {
+        // Word mode: Complete the entire word at once
+        const allLetters = quizQuestion.word.split('');
+        setSignedLetters(allLetters);
+        setCurrentLetterIndex(quizQuestion.word.length); // Set to end
+        setQuizFeedback(`✅ Word Detected: ${quizQuestion.word}`);
 
-      // Track successful letter detection
-      if (user?.id) {
-        await updateLetterStats(user.id, currentLetter, 'success');
-      }
+        // Track successful word detection
+        if (user?.id) {
+          for (let letter of allLetters) {
+            await updateLetterStats(user.id, letter, 'success');
+          }
+        }
 
-      // Check if word is complete
-      if (currentLetterIndex + 1 >= quizQuestion.word.length) {
-        // Word completed! Increment to show the last letter first
-        setCurrentLetterIndex(currentLetterIndex + 1);
-        
-        // Then wait a moment to show the last letter before success message
+        // Word completed!
         setTimeout(() => {
           setQuizScore(quizScore + 10);
           setQuizFeedback('🎉 CORRECT! +10 points');
@@ -389,11 +395,50 @@ const GameScreen = () => {
           }, 2000);
         }, 1000); // Wait 1 second to show the last letter before showing success message
       } else {
-        // Move to next letter
-        setCurrentLetterIndex(currentLetterIndex + 1);
-        setTimeout(() => {
-          setQuizFeedback('');
-        }, 1000);
+        // Letter mode: Progress letter by letter
+        const currentLetter = quizQuestion.word[currentLetterIndex];
+        const newSignedLetters = [...signedLetters, currentLetter];
+        setSignedLetters(newSignedLetters);
+        setQuizFeedback(`✅ Detected: ${currentLetter}`);
+
+        // Track successful letter detection
+        if (user?.id) {
+          await updateLetterStats(user.id, currentLetter, 'success');
+        }
+
+        // Check if word is complete
+        if (currentLetterIndex + 1 >= quizQuestion.word.length) {
+          // Word completed! Increment to show the last letter first
+          setCurrentLetterIndex(currentLetterIndex + 1);
+
+          // Then wait a moment to show the last letter before success message
+          setTimeout(() => {
+            setQuizScore(quizScore + 10);
+            setQuizFeedback('🎉 CORRECT! +10 points');
+            setQuizRound(quizRound + 1);
+
+            // Check if there are more words in this level
+            const wordBank = quizWordsFromApi.length > 0 ? quizWordsFromApi : FALLBACK_WORD_BANK;
+            const availableWords = wordBank.filter(
+              item => !usedQuizWords.includes(item.word)
+            );
+
+            if (availableWords.length === 0) {
+              // Level completed - stop game
+              setQuizGameActive(false);
+            }
+
+            setTimeout(() => {
+              generateQuizQuestion();
+            }, 2000);
+          }, 1000); // Wait 1 second to show the last letter before showing success message
+        } else {
+          // Move to next letter
+          setCurrentLetterIndex(currentLetterIndex + 1);
+          setTimeout(() => {
+            setQuizFeedback('');
+          }, 1000);
+        }
       }
 
       setIsDetecting(false);
@@ -403,13 +448,21 @@ const GameScreen = () => {
   // ==================== TYPING SPEED RUN FUNCTIONS ====================
 
   const startTypingMode = async () => {
+    // Navigate to speed preview screen immediately for instant transition
+    setCurrentScreen('speedPreview');
+    setTypingScore(0);
+    setCurrentWordIndex(0);
+    setCurrentLetterIndex(0);
+    setSignedLetters([]);
+    setTypingGameActive(false);
+
     let wordsToUse = FALLBACK_WORD_BANK.slice(0, 20).map(item => ({
       word: item.word,
       timeLimit: 10
     }));
     let timerDuration = 30;
 
-    // Call game API with user data
+    // Call game API with user data (after navigation for perceived speed)
     if (user && user.id) {
       try {
         console.log('Calling speedGame API...');
@@ -445,21 +498,11 @@ const GameScreen = () => {
     setTypingWords(wordsToUse);
     setTypingTimer(timerDuration);
 
-    // Navigate to speed preview screen
-    setCurrentScreen('speedPreview');
-    setTypingScore(0);
-    setCurrentWordIndex(0);
-    setCurrentLetterIndex(0);
-    setSignedLetters([]);
-    setTypingGameActive(false);
-
     // Set first word as current question immediately with the words we just fetched
-    setTimeout(() => {
-      if (wordsToUse.length > 0) {
-        setQuizQuestion(wordsToUse[0]);
-        console.log('First speed word set:', wordsToUse[0]);
-      }
-    }, 100);
+    if (wordsToUse.length > 0) {
+      setQuizQuestion(wordsToUse[0]);
+      console.log('First speed word set:', wordsToUse[0]);
+    }
   };
 
   const startTypingGame = () => {
@@ -551,23 +594,28 @@ const GameScreen = () => {
     if (!quizQuestion || isDetecting || !typingGameActive) return;
 
     setIsDetecting(true);
-    const currentLetter = quizQuestion.word[currentLetterIndex];
+
+    // Check if we're in word mode
+    const savedMode = await AsyncStorage.getItem('detectionMode');
+    const isWordMode = savedMode === 'word' || (!savedMode && signConfig.recognition.defaultMode === 'word');
 
     // Simulate detection delay (500ms)
     setTimeout(async () => {
-      const newSignedLetters = [...signedLetters, currentLetter];
-      setSignedLetters(newSignedLetters);
-      setQuizFeedback(`✅ Detected: ${currentLetter}`);
+      if (isWordMode) {
+        // Word mode: Complete the entire word at once
+        const allLetters = quizQuestion.word.split('');
+        setSignedLetters(allLetters);
+        setCurrentLetterIndex(quizQuestion.word.length); // Set to end
+        setQuizFeedback(`✅ Word Detected: ${quizQuestion.word}`);
 
-      // Track successful letter detection
-      if (user?.id) {
-        await updateLetterStats(user.id, currentLetter, 'success');
-      }
+        // Track successful word detection
+        if (user?.id) {
+          for (let letter of allLetters) {
+            await updateLetterStats(user.id, letter, 'success');
+          }
+        }
 
-      // Check if word is complete
-      if (currentLetterIndex + 1 >= quizQuestion.word.length) {
-        // Word completed! Increment to show the last letter first
-        setCurrentLetterIndex(currentLetterIndex + 1);
+        // Word completed!
         setTypingScore(typingScore + 1);
         setQuizFeedback('🎉 WORD COMPLETED! +1 point');
 
@@ -585,11 +633,44 @@ const GameScreen = () => {
           }
         }, 1500);
       } else {
-        // Move to next letter
-        setCurrentLetterIndex(currentLetterIndex + 1);
-        setTimeout(() => {
-          setQuizFeedback('');
-        }, 1000);
+        // Letter mode: Progress letter by letter
+        const currentLetter = quizQuestion.word[currentLetterIndex];
+        const newSignedLetters = [...signedLetters, currentLetter];
+        setSignedLetters(newSignedLetters);
+        setQuizFeedback(`✅ Detected: ${currentLetter}`);
+
+        // Track successful letter detection
+        if (user?.id) {
+          await updateLetterStats(user.id, currentLetter, 'success');
+        }
+
+        // Check if word is complete
+        if (currentLetterIndex + 1 >= quizQuestion.word.length) {
+          // Word completed! Increment to show the last letter first
+          setCurrentLetterIndex(currentLetterIndex + 1);
+          setTypingScore(typingScore + 1);
+          setQuizFeedback('🎉 WORD COMPLETED! +1 point');
+
+          setTimeout(() => {
+            // Move to next word
+            if (currentWordIndex < typingWords.length - 1) {
+              setCurrentWordIndex(currentWordIndex + 1);
+              setCurrentLetterIndex(0);
+              setSignedLetters([]);
+              setQuizQuestion(typingWords[currentWordIndex + 1]);
+              setQuizFeedback('');
+            } else {
+              // Finished all words before timer
+              handleAllWordsCompleted();
+            }
+          }, 1500);
+        } else {
+          // Move to next letter
+          setCurrentLetterIndex(currentLetterIndex + 1);
+          setTimeout(() => {
+            setQuizFeedback('');
+          }, 1000);
+        }
       }
 
       setIsDetecting(false);

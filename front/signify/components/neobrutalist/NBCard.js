@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text } from 'react-native';
+import { useTheme } from '../../context/ThemeContext';
 
 const NBCard = ({
   children,
@@ -10,14 +11,15 @@ const NBCard = ({
   className = '',
   ...props
 }) => {
+  const { isDarkMode } = useTheme();
   const getVariantClasses = () => {
     const variants = {
-      default: 'bg-brutal-white',
-      primary: 'bg-brutal-blue',
-      secondary: 'bg-brutal-gray',
-      warning: 'bg-brutal-yellow',
-      error: 'bg-brutal-red',
-      success: 'bg-brutal-green',
+      default: isDarkMode ? 'bg-brutal-dark-surface' : 'bg-brutal-white',
+      primary: isDarkMode ? 'bg-brutal-dark-blue' : 'bg-brutal-blue',
+      secondary: isDarkMode ? 'bg-brutal-dark-gray' : 'bg-brutal-gray',
+      warning: isDarkMode ? 'bg-brutal-dark-yellow' : 'bg-brutal-yellow',
+      error: isDarkMode ? 'bg-brutal-dark-red' : 'bg-brutal-red',
+      success: isDarkMode ? 'bg-brutal-dark-green' : 'bg-brutal-green',
     };
     return variants[variant] || variants.default;
   };
@@ -33,8 +35,11 @@ const NBCard = ({
   };
 
   const getTitleColor = () => {
-    const isDark = variant === 'primary' || variant === 'error' || variant === 'success';
-    return isDark ? 'text-brutal-white' : 'text-brutal-black';
+    const isDarkVariant = variant === 'primary' || variant === 'error' || variant === 'success';
+    if (isDarkMode) {
+      return isDarkVariant ? 'text-brutal-dark-white' : 'text-brutal-dark-text';
+    }
+    return isDarkVariant ? 'text-brutal-white' : 'text-brutal-black';
   };
 
   return (
@@ -43,8 +48,7 @@ const NBCard = ({
         ${getVariantClasses()}
         ${getPaddingClasses()}
         border-brutal
-        border-brutal-black
-        shadow-brutal
+        ${isDarkMode ? 'border-brutal-dark-border shadow-brutal-dark' : 'border-brutal-black shadow-brutal'}
         ${className}
       `}
       {...props}

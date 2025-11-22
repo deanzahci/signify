@@ -2,9 +2,23 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import Animated, { FadeIn, FadeOut, ZoomIn, useSharedValue, useAnimatedStyle, withTiming, withRepeat, withSequence } from 'react-native-reanimated';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../styles/colors';
+import { useTheme } from '../context/ThemeContext';
+import { useThemedColors, useThemedShadow } from '../hooks/useThemedColors';
+import { NBIcon } from '../components/NeoBrutalistIcons';
 import SignDetectionManager from '../services/signDetection';
 import signConfig from '../config/signRecognition';
+import {
+  useButtonPressAnimation,
+  useSuccessAnimation,
+  usePulseAnimation,
+  useProgressAnimation
+} from '../utils/animations';
+import { HintButton, QuickHint, HintModal } from '../components/HintSystem';
+
+const AnimatedTouchableOpacity = Animated.createAnimatedComponent(TouchableOpacity);
 
 const SpeedGameScreen = ({
   quizQuestion,
@@ -25,13 +39,68 @@ const SpeedGameScreen = ({
   onTimerEnd,
   onAllWordsCompleted
 }) => {
+  const { isDarkMode } = useTheme();
+  const themedColors = useThemedColors();
+  const shadowStyle = useThemedShadow('medium');
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraReady, setCameraReady] = useState(false);
   const [localTimer, setLocalTimer] = useState(typingTimer);
   const [currentConfidence, setCurrentConfidence] = useState(0);
   const [detectedLetter, setDetectedLetter] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [detectionMode, setDetectionMode] = useState('letter'); // Track detection mode
+  const [isWordMode, setIsWordMode] = useState(false);
   const cameraRef = useRef(null);
+
+  // Hint system state
+  const [showQuickHint, setShowQuickHint] = useState(false);
+  const [showFullHint, setShowFullHint] = useState(false);
+  const [hintLevel, setHintLevel] = useState(1);
+
+  // Animation hooks
+  const detectButtonAnim = useButtonPressAnimation();
+  const successAnim = useSuccessAnimation();
+  const timerPulse = usePulseAnimation(localTimer <= 10 && localTimer > 0);
+  const progressAnim = useProgressAnimation((typingWords.length - currentWordIndex) / typingWords.length);
+
+  // Timer color animation
+  const timerColorAnim = useSharedValue(colors.brutalGreen);
+
+  useEffect(() => {
+    if (localTimer <= 10 && localTimer > 5) {
+      timerColorAnim.value = withTiming(colors.brutalYellow, { duration: 300 });
+    } else if (localTimer <= 5 && localTimer > 0) {
+      timerColorAnim.value = withTiming(colors.brutalRed, { duration: 300 });
+    } else if (localTimer > 10) {
+      timerColorAnim.value = withTiming(colors.brutalGreen, { duration: 300 });
+    }
+  }, [localTimer]);
+
+  const timerStyle = useAnimatedStyle(() => ({
+    color: timerColorAnim.value,
+  }));
+
+  // Load detection mode from AsyncStorage
+  useEffect(() => {
+    const loadDetectionMode = async () => {
+      try {
+        const savedMode = await AsyncStorage.getItem('detectionMode');
+        if (savedMode) {
+          setDetectionMode(savedMode);
+          setIsWordMode(savedMode === 'word');
+          console.log('Loaded detection mode for Speed Game:', savedMode);
+        } else {
+          // Use config default
+          const defaultMode = signConfig.recognition.defaultMode;
+          setDetectionMode(defaultMode);
+          setIsWordMode(defaultMode === 'word');
+        }
+      } catch (error) {
+        console.error('Error loading detection mode:', error);
+      }
+    };
+    loadDetectionMode();
+  }, []);
 
   const handleCameraReady = () => {
     console.log('Camera is ready!');
@@ -40,10 +109,16 @@ const SpeedGameScreen = ({
 
     // Start sign detection when camera is ready
     if (quizQuestion && cameraRef.current) {
-      const currentLetter = quizQuestion.word[currentLetterIndex];
-      console.log('Starting detection for speed typing letter:', currentLetter);
-
-      SignDetectionManager.startDetection(cameraRef, currentLetter);
+      if (isWordMode) {
+        // In word mode, detect the complete word
+        console.log('Starting word detection for speed game:', quizQuestion.word);
+        SignDetectionManager.startWordDetection(cameraRef, quizQuestion.word);
+      } else if (currentLetterIndex < quizQuestion.word.length) {
+        // In letter mode, detect letter by letter
+        const currentLetter = quizQuestion.word[currentLetterIndex];
+        console.log('Starting detection for speed typing letter:', currentLetter);
+        SignDetectionManager.startDetection(cameraRef, currentLetter);
+      }
     }
   };
 
@@ -55,13 +130,20 @@ const SpeedGameScreen = ({
       onLetterDetected: (letter) => {
         console.log('Letter detected in Speed Game:', letter);
         // Call the original simulate detection to advance the game
-        if (onSimulateDetection) {
+        if (!isWordMode && onSimulateDetection) {
           onSimulateDetection();
         }
       },
-      onConfidenceUpdate: (confidence, letter) => {
+      onWordDetected: (word) => {
+        console.log('Word detected in Speed Game:', word);
+        // In word mode, complete the entire word at once
+        if (isWordMode && onSimulateDetection) {
+          onSimulateDetection();
+        }
+      },
+      onConfidenceUpdate: (confidence, value) => {
         setCurrentConfidence(confidence);
-        setDetectedLetter(letter);
+        setDetectedLetter(value);
       },
       onConnectionChange: (connected) => {
         console.log('WebSocket connection status:', connected);
@@ -82,19 +164,33 @@ const SpeedGameScreen = ({
     };
   }, []);
 
-  // Update target letter when it changes
+  // Update target letter/word when it changes
   useEffect(() => {
-    if (cameraReady && quizQuestion && currentLetterIndex < quizQuestion.word.length) {
-      const newTargetLetter = quizQuestion.word[currentLetterIndex];
-      console.log('Updating target letter for speed game:', newTargetLetter);
-      SignDetectionManager.updateTargetLetter(newTargetLetter);
+    if (cameraReady && quizQuestion) {
+      if (isWordMode) {
+        // In word mode, update the target word
+        console.log('Updating target word for speed game:', quizQuestion.word);
+        SignDetectionManager.updateTargetWord(quizQuestion.word);
+      } else if (currentLetterIndex < quizQuestion.word.length) {
+        // In letter mode, update the target letter
+        const newTargetLetter = quizQuestion.word[currentLetterIndex];
+        console.log('Updating target letter for speed game:', newTargetLetter);
+        SignDetectionManager.updateTargetLetter(newTargetLetter);
+      }
     }
-  }, [currentLetterIndex, quizQuestion, cameraReady]);
+  }, [currentLetterIndex, quizQuestion, cameraReady, isWordMode]);
 
   // Timer countdown effect
   useEffect(() => {
     setLocalTimer(typingTimer);
   }, [typingTimer]);
+
+  // Trigger success animation on correct feedback
+  useEffect(() => {
+    if (quizFeedback && (quizFeedback.includes('✅') || quizFeedback.includes('🎉'))) {
+      successAnim.trigger();
+    }
+  }, [quizFeedback]);
 
   useEffect(() => {
     if (typingGameActive && localTimer > 0) {
@@ -112,24 +208,51 @@ const SpeedGameScreen = ({
     }
   }, [typingGameActive, localTimer, onTimerEnd]);
 
+  // Handle hint button press
+  const handleHintPress = () => {
+    // In speed mode, show quick hint immediately due to time pressure
+    setShowQuickHint(true);
+    setTimeout(() => setShowQuickHint(false), 2000); // Shorter duration for speed mode
+
+    if (hintLevel >= 2) {
+      setShowFullHint(true);
+    }
+    setHintLevel(prev => Math.min(prev + 1, 3));
+  };
+
+  // Reset hints when word changes
+  useEffect(() => {
+    setHintLevel(1);
+    setShowQuickHint(false);
+  }, [currentWordIndex]);
+
   if (!permission) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Initializing camera...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: themedColors.brutalWhite }]}>
+        <Text style={[styles.loadingText, { color: themedColors.brutalBlack }]}>Initializing camera...</Text>
       </View>
     );
   }
 
   if (!permission.granted) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: themedColors.brutalWhite }]}>
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Camera permission is required</Text>
-          <Text style={styles.loadingSubtext}>
+          <NBIcon name="Lightning" size={48} color={themedColors.brutalBlack} />
+          <Text style={[styles.loadingText, { color: themedColors.brutalBlack }]}>Camera permission is required</Text>
+          <Text style={[styles.loadingSubtext, { color: themedColors.brutalBlack }]}>
             Please grant camera access to use SignSpeed
           </Text>
           <TouchableOpacity
-            style={[styles.submitButton, { marginTop: 20 }]}
+            style={[
+              styles.submitButton,
+              {
+                backgroundColor: themedColors.brutalGreen,
+                borderColor: themedColors.brutalBlack,
+                ...shadowStyle,
+                marginTop: 20
+              }
+            ]}
             onPress={async () => {
               const result = await requestPermission();
               if (!result.granted) {
@@ -141,13 +264,21 @@ const SpeedGameScreen = ({
               }
             }}
           >
-            <Text style={styles.submitButtonText}>REQUEST PERMISSION</Text>
+            <Text style={[styles.submitButtonText, { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }]}>REQUEST PERMISSION</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.submitButton, { backgroundColor: colors.brutalWhite, marginTop: 12 }]}
+            style={[
+              styles.submitButton,
+              {
+                backgroundColor: themedColors.brutalWhite,
+                borderColor: themedColors.brutalBlack,
+                ...shadowStyle,
+                marginTop: 12
+              }
+            ]}
             onPress={onExitTyping}
           >
-            <Text style={[styles.submitButtonText, { color: colors.brutalBlack }]}>GO BACK</Text>
+            <Text style={[styles.submitButtonText, { color: themedColors.brutalBlack }]}>GO BACK</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -169,49 +300,69 @@ const SpeedGameScreen = ({
           }}
         >
           {/* Top Bar Overlay on Camera */}
-          <View style={styles.topBar}>
-            <TouchableOpacity style={styles.topButton} onPress={onExitTyping}>
+          <Animated.View style={styles.topBar} entering={FadeIn.duration(500).delay(200)}>
+            <AnimatedTouchableOpacity
+              style={styles.topButton}
+              onPress={onExitTyping}
+              entering={ZoomIn.duration(400).delay(300)}
+            >
               <Text style={styles.topButtonText}>← BACK</Text>
-            </TouchableOpacity>
+            </AnimatedTouchableOpacity>
 
-            <View style={styles.topCenter}>
-              <Text style={styles.topScoreLabel}>LEVEL {userLevelSpeed} | ⏱️ {localTimer}s</Text>
+            <Animated.View style={styles.topCenter} entering={FadeIn.duration(600).delay(400)}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+                <NBIcon name="Lightning" size={20} color={themedColors.brutalWhite} />
+                <Animated.Text style={[styles.topScoreLabel, { marginLeft: 8 }, localTimer <= 10 && timerPulse]}>
+                  LEVEL {userLevelSpeed} | {localTimer}s
+                </Animated.Text>
+              </View>
               <Text style={styles.topRoundLabel}>Word {currentWordIndex + 1}/{typingWords.length}</Text>
-            </View>
+            </Animated.View>
 
-            <TouchableOpacity style={styles.topButton} onPress={onSkipWord}>
+            <AnimatedTouchableOpacity
+              style={styles.topButton}
+              onPress={onSkipWord}
+              entering={ZoomIn.duration(400).delay(300)}
+            >
               <Text style={styles.topButtonText}>SKIP →</Text>
-            </TouchableOpacity>
-          </View>
+            </AnimatedTouchableOpacity>
+          </Animated.View>
 
           {/* Camera Ready Indicator */}
           {!cameraReady && (
             <View style={styles.cameraLoadingOverlay}>
-              <Text style={styles.cameraLoadingText}>📷 Starting camera...</Text>
+              <Text style={styles.cameraLoadingText}>Starting camera...</Text>
             </View>
           )}
 
           {/* Feedback Message Overlay on Camera */}
           {quizFeedback && (
-            <View style={styles.feedbackOverlayCenter}>
-              <View
+            <Animated.View
+              style={styles.feedbackOverlayCenter}
+              entering={ZoomIn.duration(300).springify()}
+              exiting={FadeOut.duration(500)}
+            >
+              <Animated.View
                 style={[
                   styles.feedbackCard,
+                  successAnim.animatedStyle,
                   {
                     backgroundColor:
                       quizFeedback.includes('✅') || quizFeedback.includes('🎉')
-                        ? colors.brutalGreen
+                        ? themedColors.brutalGreen
                         : quizFeedback.includes('⏭️')
-                        ? colors.brutalYellow
+                        ? themedColors.brutalYellow
                         : quizFeedback.includes('⏱️')
-                        ? colors.brutalRed
-                        : colors.brutalRed,
+                        ? themedColors.brutalRed
+                        : themedColors.brutalRed,
+                    borderColor: themedColors.brutalBlack,
+                    ...shadowStyle,
                   },
                 ]}
               >
                 <Text style={styles.feedbackOverlayText}>{quizFeedback}</Text>
-              </View>
-            </View>
+              </Animated.View>
+            </Animated.View>
           )}
         </CameraView>
       </View>
@@ -219,65 +370,150 @@ const SpeedGameScreen = ({
       {/* Bottom Content Area (40% of screen) */}
       <View style={styles.bottomContentArea}>
         {/* Timer Display - Compact */}
-        <View style={[styles.quizCard, { backgroundColor: localTimer > 10 ? colors.brutalGreen : colors.brutalRed, marginBottom: 6, paddingVertical: 8 }]}>
-          <Text style={[styles.quizCardLabel, { color: colors.brutalWhite, fontSize: 11 }]}>⏱️ TIME</Text>
-          <Text style={[styles.quizLetterCount, { color: colors.brutalWhite, fontSize: 32 }]}>
+        <Animated.View
+          style={[
+            styles.quizCard,
+            {
+              backgroundColor: localTimer > 10 ? themedColors.brutalGreen : localTimer > 5 ? themedColors.brutalYellow : themedColors.brutalRed,
+              borderColor: themedColors.brutalBlack,
+              ...shadowStyle,
+              marginBottom: 6,
+              paddingVertical: 8
+            },
+            localTimer <= 10 && timerPulse
+          ]}
+          entering={ZoomIn.duration(400).delay(100)}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center' }}>
+            <NBIcon name="Lightning" size={16} color={isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite} />
+            <Text style={[styles.quizCardLabel, { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite, fontSize: 11, marginLeft: 6 }]}>TIME</Text>
+          </View>
+          <Animated.Text style={[styles.quizLetterCount, { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite, fontSize: 32 }, timerStyle]}>
             {localTimer}s
-          </Text>
-        </View>
+          </Animated.Text>
+        </Animated.View>
 
-        {/* Current Word Display - Compact */}
-        <View style={styles.wordProgressContainerBottom}>
-          <Text style={[styles.wordProgressLabelBottom, { fontSize: 11, marginBottom: 4 }]}>CURRENT WORD:</Text>
-          <View style={styles.wordDisplay}>
-            {quizQuestion.word.split('').map((letter, idx) => (
-              <View
-                key={idx}
-                style={[
-                  styles.letterDisplayBox,
-                  idx < currentLetterIndex && styles.letterDisplayBoxCompleted,
-                  idx === currentLetterIndex && styles.letterDisplayBoxCurrent,
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.letterDisplayText,
-                    idx < currentLetterIndex && styles.letterDisplayTextCompleted,
-                    idx === currentLetterIndex && styles.letterDisplayTextCurrent,
-                  ]}
-                >
-                  {letter}
+        {/* Current Word Display - Different for word vs letter mode */}
+        {quizQuestion && (
+          <View style={styles.wordProgressContainerBottom}>
+            <Text style={[styles.wordProgressLabelBottom, { fontSize: 11, marginBottom: 4, color: themedColors.brutalBlack }]}>
+              {isWordMode ? 'TARGET WORD:' : 'CURRENT WORD:'}
+            </Text>
+            {isWordMode ? (
+              // In word mode, show the complete word to sign
+              <View style={[styles.currentSignPromptBottom, { paddingVertical: 12, marginBottom: 8, backgroundColor: themedColors.brutalPurple, borderColor: themedColors.brutalBlack }]}>
+                <Text style={[styles.currentSignLetterBottom, { fontSize: 32, color: themedColors.brutalWhite }]}>
+                  {quizQuestion.word}
                 </Text>
               </View>
-            ))}
+            ) : (
+              // In letter mode, show letter-by-letter progress
+              <View style={styles.wordDisplay}>
+                {quizQuestion.word.split('').map((letter, idx) => (
+                  <View
+                    key={idx}
+                    style={[
+                      styles.letterDisplayBox,
+                      {
+                        backgroundColor: themedColors.brutalWhite,
+                        borderColor: themedColors.brutalBlack,
+                      },
+                      idx < currentLetterIndex && {
+                        backgroundColor: themedColors.brutalGreen,
+                      },
+                      idx === currentLetterIndex && {
+                        backgroundColor: themedColors.brutalYellow,
+                        borderWidth: 5,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.letterDisplayText,
+                        { color: themedColors.brutalBlack },
+                        idx < currentLetterIndex && styles.letterDisplayTextCompleted,
+                        idx === currentLetterIndex && styles.letterDisplayTextCurrent,
+                      ]}
+                    >
+                      {letter}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
-        </View>
+        )}
 
-        {/* Current Letter to Sign - Compact */}
-        {currentLetterIndex < quizQuestion.word.length && (
-          <View style={[styles.currentSignPromptBottom, { paddingVertical: 6, marginVertical: 4 }]}>
-            <Text style={[styles.currentSignLabelBottom, { fontSize: 11, marginBottom: 2 }]}>SIGN:</Text>
-            <Text style={[styles.currentSignLetterBottom, { fontSize: 24 }]}>
+        {/* Current Letter to Sign - Only show in letter mode */}
+        {!isWordMode && quizQuestion && currentLetterIndex < quizQuestion.word.length && (
+          <View style={[styles.currentSignPromptBottom, { paddingVertical: 6, marginVertical: 4, backgroundColor: themedColors.brutalPurple, borderColor: themedColors.brutalBlack }]}>
+            <Text style={[styles.currentSignLabelBottom, { fontSize: 11, marginBottom: 2, color: themedColors.brutalWhite }]}>SIGN:</Text>
+            <Text style={[styles.currentSignLetterBottom, { fontSize: 24, color: themedColors.brutalWhite }]}>
               {quizQuestion.word[currentLetterIndex]}
             </Text>
           </View>
         )}
 
         {/* Test Button - Compact */}
-        <TouchableOpacity
+        <AnimatedTouchableOpacity
           style={[
             styles.detectButtonBottom,
+            {
+              backgroundColor: themedColors.brutalBlue,
+              borderColor: themedColors.brutalBlack,
+              shadowColor: themedColors.brutalBlack,
+            },
             isDetecting && styles.detectButtonDisabled,
+            detectButtonAnim.animatedStyle,
           ]}
           onPress={onSimulateDetection}
+          onPressIn={detectButtonAnim.handlePressIn}
+          onPressOut={detectButtonAnim.handlePressOut}
           disabled={isDetecting}
-          activeOpacity={0.9}
+          activeOpacity={1}
+          entering={ZoomIn.duration(400).delay(100)}
         >
-          <Text style={styles.detectButtonText}>
+          <Text style={[styles.detectButtonText, { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }]}>
             {isDetecting ? 'DETECTING...' : '🤚 DETECT SIGN'}
           </Text>
-        </TouchableOpacity>
+        </AnimatedTouchableOpacity>
       </View>
+
+      {/* Floating Hint Button - Only show in letter mode */}
+      {!isWordMode && (
+        <HintButton
+          onPress={handleHintPress}
+          isStruggling={localTimer <= 5}
+          attemptsCount={0}
+          style={{
+            bottom: 100,
+            right: 20,
+            zIndex: 1000,
+            width: 48,
+            height: 48,
+          }}
+        />
+      )}
+
+      {/* Quick Hint Popup - Only show in letter mode */}
+      {!isWordMode && quizQuestion && (
+        <QuickHint
+          letter={currentLetterIndex < quizQuestion.word.length ? quizQuestion.word[currentLetterIndex] : ''}
+          visible={showQuickHint}
+          onClose={() => setShowQuickHint(false)}
+          hintLevel={hintLevel}
+        />
+      )}
+
+      {/* Full Hint Modal - Only show in letter mode */}
+      {!isWordMode && quizQuestion && (
+        <HintModal
+          letter={currentLetterIndex < quizQuestion.word.length ? quizQuestion.word[currentLetterIndex] : ''}
+          visible={showFullHint}
+          onClose={() => setShowFullHint(false)}
+          showAllDetails={true} // Always show all details in speed mode
+        />
+      )}
     </View>
   );
 };
@@ -296,7 +532,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
     textAlign: 'center',
     marginBottom: 12,
@@ -305,7 +541,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.brutalBlack,
     textAlign: 'center',
-    fontFamily: 'monospace',
+    fontFamily: 'Sora-Regular',
   },
   submitButton: {
     backgroundColor: colors.brutalBlue,
@@ -321,7 +557,7 @@ const styles = StyleSheet.create({
   },
   submitButtonText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalWhite,
     textAlign: 'center',
     letterSpacing: 1,
@@ -363,15 +599,17 @@ const styles = StyleSheet.create({
   },
   topButtonText: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
   },
   topCenter: {
     alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
   },
   topScoreLabel: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalWhite,
     backgroundColor: colors.brutalBlue,
     paddingHorizontal: 16,
@@ -381,7 +619,7 @@ const styles = StyleSheet.create({
   },
   topRoundLabel: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalWhite,
     marginTop: 4,
   },
@@ -399,7 +637,7 @@ const styles = StyleSheet.create({
   },
   cameraLoadingText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalWhite,
   },
   feedbackOverlayCenter: {
@@ -422,7 +660,7 @@ const styles = StyleSheet.create({
   },
   feedbackOverlayText: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalWhite,
     textAlign: 'center',
   },
@@ -446,14 +684,14 @@ const styles = StyleSheet.create({
   },
   quizCardLabel: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
     marginBottom: 8,
     letterSpacing: 1,
   },
   quizLetterCount: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
     marginBottom: 12,
   },
@@ -464,7 +702,7 @@ const styles = StyleSheet.create({
   },
   wordProgressLabelBottom: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
     marginBottom: 12,
     letterSpacing: 1,
@@ -498,7 +736,7 @@ const styles = StyleSheet.create({
   },
   letterDisplayText: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
   },
   letterDisplayTextCompleted: {
@@ -524,14 +762,14 @@ const styles = StyleSheet.create({
   },
   currentSignLabelBottom: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalWhite,
     marginBottom: 4,
     letterSpacing: 1,
   },
   currentSignLetterBottom: {
     fontSize: 36,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalWhite,
     letterSpacing: 2,
   },
@@ -555,7 +793,7 @@ const styles = StyleSheet.create({
   },
   detectButtonText: {
     fontSize: 13,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalWhite,
     textAlign: 'center',
     letterSpacing: 1,
@@ -580,9 +818,8 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
-    fontFamily: 'monospace',
   },
 
   // Confidence Container
@@ -591,7 +828,7 @@ const styles = StyleSheet.create({
   },
   confidenceLabel: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontFamily: 'Sora-Bold',
     color: colors.brutalBlack,
     marginTop: 8,
     textAlign: 'center',
