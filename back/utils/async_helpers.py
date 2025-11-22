@@ -62,9 +62,8 @@ def format_response(maxarg_letter: str, target_arg_prob: float) -> str:
         JSON string
     """
     response = {
-        "detected_word_letter": maxarg_letter,
-        "target_word_prob": 0.0,
-        "target_lettr_prob": round(target_arg_prob, 4),
+        "maxarg_letter": maxarg_letter,
+        "target_arg_prob": round(target_arg_prob, 4),
     }
     return json.dumps(response)
 

@@ -50,7 +50,7 @@ Establish a persistent WebSocket connection. The client continuously streams JSO
 
 ```json
 {
-  "jpeg_blob": "<binary_jpeg_data>",
+  "jpeg_blob": "<base64 encoded JPEG binary>",
   "new_word_letter": "<char | string | null>"
 }
 ```
@@ -64,16 +64,15 @@ Establish a persistent WebSocket connection. The client continuously streams JSO
 
 ```json
 {
-  "detected_word_letter": "<char | string>",
-  "target_word_prob": <0.0 - 1.0> float,
-  "target_lettr_prob": <0.0 - 1.0> float
+  "maxarg_letter": "<char | string>",
+  "target_arg_prob": <0.0 - 1.0> float
 }
 ```
 
 **Fields:**
 
-- `maxarg_letter`: The system's best guess for the current sign
-- `target_arg_prob`: A confidence score indicating how close the user's sign is to the correct target. Used to drive UI feedback
+- `maxarg_letter`: The system's best guess for the current sign (A-Z)
+- `target_arg_prob`: A confidence score indicating how close the user's sign is to the correct target. Used to drive UI feedback (0.0-1.0)
 
 ---
 
