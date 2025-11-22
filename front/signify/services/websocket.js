@@ -43,12 +43,12 @@ class SignLanguageWebSocket {
       // Set a timeout for initial connection
       setTimeout(() => {
         if (!this.isConnected) {
-          console.log('⚠️ WebSocket connection timeout - falling back to manual mode');
+          console.log(' WebSocket connection timeout - falling back to manual mode');
           this.handleFallback();
         }
       }, 3000);
     } catch (error) {
-      console.log('⚠️ Backend sign detection not available - using manual mode');
+      console.log(' Backend sign detection not available - using manual mode');
       this.handleFallback();
     }
   }
@@ -63,7 +63,7 @@ class SignLanguageWebSocket {
       this.ws = null;
     }
 
-    console.log('ℹ️ Running in offline mode - manual detection available');
+    console.log(' Running in offline mode - manual detection available');
 
     if (this.callbacks.onDisconnect) {
       this.callbacks.onDisconnect();
@@ -74,7 +74,7 @@ class SignLanguageWebSocket {
     if (!this.ws) return;
 
     this.ws.onopen = () => {
-      console.log('✅ WebSocket connected - Real-time sign detection enabled!');
+      console.log(' WebSocket connected - Real-time sign detection enabled!');
       this.isConnected = true;
       this.reconnectAttempts = 0;
       this.reconnectDelay = 1000;
@@ -104,7 +104,7 @@ class SignLanguageWebSocket {
     };
 
     this.ws.onerror = (error) => {
-      console.log('⚠️ WebSocket error occurred - falling back to manual mode');
+      console.log(' WebSocket error occurred - falling back to manual mode');
       this.isConnected = false;
 
       if (this.callbacks.onError) {
@@ -132,7 +132,7 @@ class SignLanguageWebSocket {
           this.connect(this.wsUrl, this.callbacks);
         }, 2000);
       } else {
-        console.log('ℹ️ WebSocket disconnected - manual mode available');
+        console.log(' WebSocket disconnected - manual mode available');
         this.handleFallback();
       }
     };
@@ -256,7 +256,7 @@ class SignLanguageWebSocket {
    */
   attemptReconnect() {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log('❌ Max reconnection attempts reached - staying in manual mode');
+      console.log(' Max reconnection attempts reached - staying in manual mode');
       this.handleFallback();
       return;
     }

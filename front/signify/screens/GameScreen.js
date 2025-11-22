@@ -335,7 +335,7 @@ const GameScreen = () => {
           highScoreQuiz: quizScore > userStats.quizHighScore ? quizScore : userStats.quizHighScore,
           gamesPlayed: increment(1)
         });
-        console.log('✅ Quiz level updated in Firestore!');
+        console.log(' Quiz level updated in Firestore!');
         // Update local state
         setUserLevelQuiz(prev => prev + 1);
         if (quizScore > userStats.quizHighScore) {

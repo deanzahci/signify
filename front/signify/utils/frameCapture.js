@@ -24,7 +24,7 @@ class FrameCapture {
    */
   startCapture(cameraRef, onFrame, options = {}) {
     if (this.isCapturing) {
-      console.log('⚠️ Frame capture already in progress');
+      console.log(' Frame capture already in progress');
       return;
     }
 
@@ -33,7 +33,7 @@ class FrameCapture {
     this.quality = quality;
     this.cameraReady = true;
 
-    console.log('📸 Starting frame capture:', {
+    console.log(' Starting frame capture:', {
       frameRate: `${frameRate}ms (${1000/frameRate} FPS)`,
       quality: quality,
       maxWidth: this.maxWidth
@@ -54,7 +54,7 @@ class FrameCapture {
       } catch (error) {
         // Silently skip errors to avoid spam
         if (this.frameCount % 10 === 0) {
-          console.log('⚠️ Frame capture skipped:', error.message);
+          console.log(' Frame capture skipped:', error.message);
         }
       }
     }, frameRate);
@@ -96,7 +96,7 @@ class FrameCapture {
 
       // Log frame capture details
       if (this.frameCount % 10 === 0) { // Log every 10th frame to reduce console spam
-        console.log('📸 Frame captured:', {
+        console.log(' Frame captured:', {
           frameNumber: this.frameCount,
           size: `${(jpegBlob.size / 1024).toFixed(2)} KB`,
           width: photo.width,
@@ -129,7 +129,7 @@ class FrameCapture {
 
       // Only log errors occasionally to avoid spam
       if (this.frameCount % 10 === 0) {
-        console.log('⚠️ Could not capture frame:', error.message);
+        console.log(' Could not capture frame:', error.message);
       }
     } finally {
       this.isProcessingFrame = false;
@@ -157,7 +157,7 @@ class FrameCapture {
 
       // Log frame capture details
       if (this.frameCount % 10 === 0) {
-        console.log('📸 Frame captured (alternative):', {
+        console.log(' Frame captured (alternative):', {
           frameNumber: this.frameCount,
           captureTime: `${now - this.lastCaptureTime}ms`
         });
@@ -181,7 +181,7 @@ class FrameCapture {
       }
 
       if (this.frameCount % 10 === 0) {
-        console.log('⚠️ Alternative capture failed:', error.message);
+        console.log(' Alternative capture failed:', error.message);
       }
     } finally {
       this.isProcessingFrame = false;
@@ -201,7 +201,7 @@ class FrameCapture {
     this.isProcessingFrame = false;
     this.cameraReady = false;
 
-    console.log('📸 Stopped frame capture:', {
+    console.log(' Stopped frame capture:', {
       totalFramesCaptured: this.frameCount,
       duration: this.lastCaptureTime ? `${(Date.now() - this.lastCaptureTime) / 1000}s` : 'N/A'
     });
