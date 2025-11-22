@@ -1,11 +1,12 @@
 import asyncio
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Any
-from app.state import PipelineState
+from typing import Any, Optional
+
 from app.consumer import Consumer
+from app.state import PipelineState
 from services.throttling import ThrottlingService
-from utils.async_helpers import validate_message, format_response, format_error_response
+from utils.async_helpers import format_error_response, format_response, validate_message
 from utils.metrics import PerformanceMetrics
 
 

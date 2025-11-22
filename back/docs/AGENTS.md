@@ -23,4 +23,3 @@
 - State in PipelineState: keypoint_buffer (32), smoothing_buffer (5), current_target_letter
 - Config constants in config.py, import and use directly
 - WebSocket handler in main.py, processing pipeline in Consumer
-

@@ -11,6 +11,7 @@
 ## 📋 OVERVIEW
 
 Phase 1 establishes the core building blocks that all subsequent phases depend on:
+
 - **RollingBuffer**: FIFO buffer for temporal data (keypoints, distributions)
 - **Metrics Utilities**: Character mapping and probability extraction
 - **PipelineState**: Centralized state management with emergency reset
@@ -39,6 +40,7 @@ class RollingBuffer:
 ```
 
 **Key Features**:
+
 - ✅ Automatic overflow handling (oldest items dropped)
 - ✅ Type-agnostic storage (Any)
 - ✅ Fast append/clear operations: O(1)
@@ -46,6 +48,7 @@ class RollingBuffer:
 - ✅ Memory-efficient: Fixed size
 
 **Behavior**:
+
 ```python
 buffer = RollingBuffer(max_size=3)
 buffer.append("A")  # ["A"]
@@ -59,6 +62,7 @@ buffer.clear()      # []
 ```
 
 **Usage in Pipeline**:
+
 - **Keypoint Buffer**: Stores 32 frames of hand landmarks (42, 3)
 - **Smoothing Buffer**: Stores 5 frames of probability distributions [26]
 
@@ -79,6 +83,7 @@ index_to_char(25)  # "Z"
 ```
 
 **Implementation**:
+
 ```python
 def index_to_char(index: int) -> str:
     return chr(ord("A") + index)
@@ -95,6 +100,7 @@ char_to_index("Z")  # 25
 ```
 
 **Implementation**:
+
 ```python
 def char_to_index(char: str) -> int:
     return ord(char.upper()) - ord("A")
@@ -103,6 +109,7 @@ def char_to_index(char: str) -> int:
 #### Function: `extract_metrics(probability_distribution: list, target_letter: Optional[str]) -> Tuple[str, float]`
 
 Extracts two key metrics from LSTM output:
+
 1. **maxarg_letter**: Letter with highest probability
 2. **target_arg_prob**: Probability of the current target letter
 
@@ -118,6 +125,7 @@ maxarg, target_prob = extract_metrics(probs, target_letter="A")
 ```
 
 **Edge Cases Handled**:
+
 - Empty distribution → Returns ("A", 0.0)
 - No target letter → target_arg_prob = 0.0
 - Invalid target letter → target_arg_prob = 0.0
@@ -142,6 +150,7 @@ class PerformanceMetrics:
 ```
 
 **Tracked Metrics**:
+
 - **Uptime**: Total server runtime (seconds)
 - **Processed Frames**: Total frames successfully processed
 - **Dropped Frames**: Frames dropped due to backpressure
@@ -152,6 +161,7 @@ class PerformanceMetrics:
 - **FPS**: Frames per second (calculated from avg time)
 
 **Example Usage**:
+
 ```python
 metrics = PerformanceMetrics(window_size=100)
 
@@ -172,20 +182,22 @@ print(stats)
 ```
 
 **Output Format**:
+
 ```json
 {
-    "uptime_seconds": 120.45,
-    "processed_frames": 3000,
-    "dropped_frames": 50,
-    "drop_rate": 1.64,
-    "inference_count": 95,
-    "error_count": 2,
-    "avg_frame_time_ms": 33.21,
-    "fps": 30.11
+  "uptime_seconds": 120.45,
+  "processed_frames": 3000,
+  "dropped_frames": 50,
+  "drop_rate": 1.64,
+  "inference_count": 95,
+  "error_count": 2,
+  "avg_frame_time_ms": 33.21,
+  "fps": 30.11
 }
 ```
 
 **Key Features**:
+
 - ✅ Sliding window for FPS calculation (configurable size)
 - ✅ Automatic drop rate calculation
 - ✅ Lightweight (minimal overhead)
@@ -206,6 +218,7 @@ class PipelineState:
 ```
 
 **Attributes**:
+
 - `keypoint_buffer`: RollingBuffer(32) for hand landmarks
 - `smoothing_buffer`: RollingBuffer(5) for probability distributions
 - `current_target_letter`: Current letter user is learning (A-Z or None)
@@ -213,6 +226,7 @@ class PipelineState:
 **Methods**:
 
 #### `__init__(self)`
+
 Initializes state with empty buffers and no target letter
 
 ```python
@@ -223,6 +237,7 @@ state = PipelineState()
 ```
 
 #### `reset(self, new_target_letter: Optional[str] = None) -> None`
+
 Emergency reset: Clears all buffers and sets new target letter
 
 ```python
@@ -238,6 +253,7 @@ state.reset("C")
 ```
 
 **Usage Pattern**:
+
 ```python
 # Phase 3: Consumer adds data
 landmarks = preprocess(jpeg_bytes)
@@ -254,6 +270,7 @@ if new_letter is not None:
 ```
 
 **Key Features**:
+
 - ✅ Single source of truth for pipeline state
 - ✅ Atomic reset operation (all buffers cleared together)
 - ✅ Simple interface (only 2 public methods)
@@ -311,6 +328,7 @@ All tests passing ✅
 ### Test Coverage:
 
 1. ✅ **Character Mapping**
+
    ```python
    index_to_char(0) == "A"
    index_to_char(25) == "Z"
@@ -319,12 +337,14 @@ All tests passing ✅
    ```
 
 2. ✅ **Metrics Extraction**
+
    ```python
    probs = [0.01]*26; probs[1] = 0.95
    extract_metrics(probs, "B") == ("B", 0.95)
    ```
 
 3. ✅ **PipelineState Initialization**
+
    ```python
    state.keypoint_buffer: 0/32
    state.smoothing_buffer: 0/5
@@ -332,16 +352,18 @@ All tests passing ✅
    ```
 
 4. ✅ **Buffer Append & Overflow**
+
    ```python
    # Append 35 items to 32-capacity buffer
    for i in range(35):
        state.keypoint_buffer.append(f"frame_{i}")
-   
+
    len(state.keypoint_buffer) == 32  # Oldest 3 dropped
    state.keypoint_buffer.is_full() == True
    ```
 
 5. ✅ **Reset Functionality**
+
    ```python
    state.reset("C")
    len(state.keypoint_buffer) == 0
@@ -350,12 +372,13 @@ All tests passing ✅
    ```
 
 6. ✅ **Buffer get_all() Behavior**
+
    ```python
    # Add only 2/32 items
    state.keypoint_buffer.append("item1")
    state.keypoint_buffer.append("item2")
    state.keypoint_buffer.get_all() == None  # Not full yet
-   
+
    # Fill to 32/32
    for i in range(30):
        state.keypoint_buffer.append(f"item{i}")
@@ -363,12 +386,14 @@ All tests passing ✅
    ```
 
 **Run Tests**:
+
 ```bash
 cd back
 python test/test_phase1.py
 ```
 
 **Expected Output**:
+
 ```
 Testing Phase 1 Implementation
 ==================================================
@@ -425,6 +450,7 @@ TOTAL_LANDMARKS = HAND_LANDMARKS * NUM_HANDS  # 42
 ```
 
 **Rationale**:
+
 - **32 frames**: ~1 second at 30 FPS (enough temporal context for LSTM)
 - **5 frames**: ~167ms smoothing window (reduces jitter, stays responsive)
 - **2 hands**: Left + Right hands both required for recognition
@@ -434,45 +460,55 @@ TOTAL_LANDMARKS = HAND_LANDMARKS * NUM_HANDS  # 42
 ## 🎯 KEY DESIGN DECISIONS
 
 ### 1. Fixed-Size Buffers
+
 **Decision**: Use fixed-size FIFO buffers (not dynamic lists)
 
 **Rationale**:
+
 - Predictable memory usage
 - Automatic overflow handling
 - O(1) append performance
 - No manual size management
 
 ### 2. Centralized State
+
 **Decision**: Single `PipelineState` object instead of global variables
 
 **Rationale**:
+
 - Easier to pass between Producer/Consumer
 - Atomic reset operation
 - Clear ownership and lifecycle
 - Testable in isolation
 
 ### 3. Separate Buffers
+
 **Decision**: Two separate buffers (keypoints, smoothing) instead of one
 
 **Rationale**:
+
 - Different sizes (32 vs 5)
 - Different data types (landmarks vs probabilities)
 - Different purposes (sequence building vs jitter reduction)
 - Clear separation of concerns
 
 ### 4. get_all() Returns None When Not Full
+
 **Decision**: Return `None` instead of partial data
 
 **Rationale**:
+
 - LSTM requires exactly 32 frames
 - Prevents inference on incomplete sequences
 - Explicit signal to Consumer: "keep buffering"
 - Avoids padding logic
 
 ### 5. Performance Metrics as Separate Class
+
 **Decision**: Dedicated `PerformanceMetrics` class instead of counters in State
 
 **Rationale**:
+
 - Separation of concerns (state vs monitoring)
 - Optional feature (can be disabled)
 - Cleaner State interface
@@ -500,16 +536,19 @@ back/
 ## 🔗 DEPENDENCIES
 
 **Phase 1 → Phase 2**:
+
 - `RollingBuffer` used by `PipelineState`
 - `extract_metrics()` used by `Consumer` (Phase 3)
 - `PerformanceMetrics` used by `Producer` (Phase 3)
 
 **Phase 1 → Phase 3**:
+
 - `PipelineState` passed to Producer and Consumer
 - Buffers managed through State interface
 - Emergency reset triggered by Producer
 
 **Phase 1 → Phase 4**:
+
 - `PerformanceMetrics` exposed via metrics endpoint
 - State persists across WebSocket connections
 
@@ -518,6 +557,7 @@ back/
 ## 📈 PERFORMANCE CHARACTERISTICS
 
 ### RollingBuffer
+
 - **Memory**: O(n) where n = max_size
 - **append()**: O(1)
 - **clear()**: O(1)
@@ -525,12 +565,14 @@ back/
 - **is_full()**: O(1)
 
 ### Metrics Functions
+
 - **index_to_char()**: O(1)
 - **char_to_index()**: O(1)
 - **extract_metrics()**: O(n) where n = 26 (constant)
 
 ### PerformanceMetrics
-- **record_*()**: O(1)
+
+- **record\_\*()**: O(1)
 - **get_stats()**: O(w) where w = window_size (typically 100)
 
 **Overall**: Extremely lightweight, negligible overhead on pipeline
@@ -557,7 +599,9 @@ Phase 1 is complete when:
 ## 🚀 NEXT STEPS
 
 ### Phase 2: Processing Services
+
 With Phase 1 complete, we can now implement:
+
 - **PreprocessingService**: MediaPipe hand detection
 - **InferenceService**: LSTM model wrapper
 - **SmoothingService**: Temporal averaging
@@ -566,13 +610,17 @@ With Phase 1 complete, we can now implement:
 These services will use the buffers and metrics from Phase 1.
 
 ### Phase 3: Producer-Consumer Pipeline
+
 Phase 1 State management enables:
+
 - **Consumer**: Fills buffers via State interface
 - **Producer**: Triggers reset via State.reset()
 - **Metrics**: Performance monitoring via PerformanceMetrics
 
 ### Phase 4: WebSocket Server
+
 Phase 1 metrics will be exposed via:
+
 - HTTP `/metrics` endpoint (JSON)
 - Final performance stats on shutdown
 - Real-time monitoring dashboards
@@ -582,13 +630,16 @@ Phase 1 metrics will be exposed via:
 ## 🎓 KEY LEARNINGS
 
 ### Why Phase 1 First?
+
 Building foundation first prevents:
+
 - ❌ Circular dependencies
 - ❌ Refactoring data structures later
 - ❌ Duplicated buffer logic
 - ❌ Unclear state ownership
 
 ### Benefits of This Approach:
+
 - ✅ Clear contracts between phases
 - ✅ Each phase can be tested independently
 - ✅ Easy to understand and maintain
@@ -599,11 +650,13 @@ Building foundation first prevents:
 ## 📚 REFERENCE
 
 **Key Files**:
+
 - Implementation: `back/utils/buffer.py`, `back/utils/metrics.py`, `back/app/state.py`
 - Tests: `back/test/test_phase1.py`
 - Config: `back/config.py`
 
 **Related Phases**:
+
 - Phase 2: `back/PHASE2_SUMMARY.md`
 - Phase 3: `back/PHASE3_SUMMARY.md`
 - Phase 4: `back/PHASE4.md`

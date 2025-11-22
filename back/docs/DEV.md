@@ -51,7 +51,7 @@ Establish a persistent WebSocket connection. The client continuously streams JSO
 ```json
 {
   "jpeg_blob": "<binary_jpeg_data>",
-  "new_letter": "<char | null>"
+  "new_word_letter": "<char | string | null>"
 }
 ```
 
@@ -64,8 +64,9 @@ Establish a persistent WebSocket connection. The client continuously streams JSO
 
 ```json
 {
-  "maxarg_letter": "<char>",
-  "target_arg_prob": <float 0.0-1.0>
+  "detected_word_letter": "<char | string>",
+  "target_word_prob": <0.0 - 1.0> float,
+  "target_lettr_prob": <0.0 - 1.0> float
 }
 ```
 
