@@ -62,6 +62,7 @@ const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
   const [typingTimer, setTypingTimer] = useState(30); // default timer
   const [typingStartTime, setTypingStartTime] = useState(null);
   const [speedWordsFromApi, setSpeedWordsFromApi] = useState([]);
+  const [nextWordCountdown, setNextWordCountdown] = useState(null); // 5-second countdown for next word
 
   // ==================== WORD MODE DETECTION ====================
   const [isWordMode, setIsWordMode] = useState(false);
@@ -626,12 +627,45 @@ const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
   };
 
   const handleTypingTimerEnd = () => {
-    console.log('Timer ended!');
-    setTypingGameActive(false);
-    setQuizFeedback('TIME\'S UP!');
+    console.log('Timer ended for current word!');
+    
+    // Clear feedback immediately and start countdown
+    setQuizFeedback('');
+    setNextWordCountdown(5);
+  };
 
-    // Update Firestore with final score
-    updateSpeedLevelInFirestore();
+  // Countdown effect for next word
+  useEffect(() => {
+    if (nextWordCountdown !== null && nextWordCountdown > 0) {
+      const timer = setTimeout(() => {
+        setNextWordCountdown(nextWordCountdown - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (nextWordCountdown === 0) {
+      // Countdown finished, move to next word
+      moveToNextWord();
+    }
+  }, [nextWordCountdown]);
+
+  const moveToNextWord = () => {
+    if (currentWordIndex < typingWords.length - 1) {
+      // Move to next word
+      setCurrentWordIndex(currentWordIndex + 1);
+      setCurrentLetterIndex(0);
+      setSignedLetters([]);
+      setQuizQuestion(typingWords[currentWordIndex + 1]);
+      setQuizFeedback('');
+      setNextWordCountdown(null); // Reset countdown
+      
+      // Reset the timer for the next word
+      setTypingTimer(typingWords[currentWordIndex + 1].timeLimit || 30);
+    } else {
+      // All words completed
+      setTypingGameActive(false);
+      setQuizFeedback('🎉 ALL WORDS COMPLETED!');
+      setNextWordCountdown(null);
+      handleAllWordsCompleted();
+    }
   };
 
   const handleAllWordsCompleted = () => {
@@ -843,6 +877,8 @@ const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
           typingStartTime={typingStartTime}
           isDetecting={isDetecting}
           typingGameActive={typingGameActive}
+          quizFeedback={quizFeedback}
+          nextWordCountdown={nextWordCountdown}
           onExitTyping={exitTypingMode}
           onSkipWord={skipWord}
           onSimulateDetection={simulateSignDetection}

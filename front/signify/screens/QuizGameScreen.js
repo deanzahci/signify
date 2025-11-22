@@ -213,6 +213,26 @@ const QuizGameScreen = ({
     }
   }, [quizFeedback]);
 
+  // Automatic detection when confidence >= 85%
+  useEffect(() => {
+    if (
+      !isDetecting &&
+      currentConfidence >= 0.85 &&
+      detectedValue &&
+      quizQuestion &&
+      currentLetterIndex < quizQuestion.word.length
+    ) {
+      const targetLetter = quizQuestion.word[currentLetterIndex];
+      
+      // Check if detected letter matches target letter
+      if (detectedValue.toUpperCase() === targetLetter.toUpperCase()) {
+        console.log(`Auto-detected: ${detectedValue} at ${currentConfidence * 100}% confidence`);
+        // Automatically trigger detection
+        onSimulateDetection();
+      }
+    }
+  }, [currentConfidence, detectedValue, isDetecting, currentLetterIndex, quizQuestion]);
+
   // Track struggling behavior
   useEffect(() => {
     // Reset attempts when letter changes

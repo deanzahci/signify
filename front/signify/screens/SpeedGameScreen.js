@@ -36,6 +36,7 @@ const SpeedGameScreen = ({
   signedLetters,
   isDetecting,
   typingGameActive,
+  nextWordCountdown,
   onExitTyping,
   onSkipWord,
   onSimulateDetection,
@@ -205,8 +206,30 @@ const SpeedGameScreen = ({
     }
   }, [quizFeedback]);
 
+  // Automatic detection when confidence >= 85%
   useEffect(() => {
-    if (typingGameActive && localTimer > 0) {
+    if (
+      typingGameActive &&
+      !isDetecting &&
+      nextWordCountdown === null &&
+      currentConfidence >= 0.85 &&
+      detectedLetter &&
+      quizQuestion &&
+      currentLetterIndex < quizQuestion.word.length
+    ) {
+      const targetLetter = quizQuestion.word[currentLetterIndex];
+      
+      // Check if detected letter matches target letter
+      if (detectedLetter.toUpperCase() === targetLetter.toUpperCase()) {
+        console.log(`Auto-detected: ${detectedLetter} at ${currentConfidence * 100}% confidence`);
+        // Automatically trigger detection
+        onSimulateDetection();
+      }
+    }
+  }, [currentConfidence, detectedLetter, typingGameActive, isDetecting, nextWordCountdown, currentLetterIndex, quizQuestion]);
+
+  useEffect(() => {
+    if (typingGameActive && localTimer > 0 && nextWordCountdown === null) {
       const interval = setInterval(() => {
         setLocalTimer(prev => {
           if (prev <= 1) {
@@ -219,7 +242,7 @@ const SpeedGameScreen = ({
 
       return () => clearInterval(interval);
     }
-  }, [typingGameActive, localTimer, onTimerEnd]);
+  }, [typingGameActive, localTimer, onTimerEnd, nextWordCountdown]);
 
   // Handle hint button press
   const handleHintPress = async () => {
@@ -359,8 +382,8 @@ const SpeedGameScreen = ({
             </View>
           )}
 
-          {/* Detection Display - Shows current detection and confidence */}
-          {cameraReady && (
+          {/* Detection Display - Shows current detection and confidence - Hidden during countdown */}
+          {cameraReady && nextWordCountdown === null && (
             <View style={styles.detectionDisplayContainer}>
               <DetectionDisplay
                 isConnected={isConnected}
@@ -372,8 +395,8 @@ const SpeedGameScreen = ({
             </View>
           )}
 
-          {/* Feedback Message Overlay on Camera */}
-          {quizFeedback && (
+          {/* Feedback Message Overlay on Camera - Hidden during countdown */}
+          {quizFeedback && nextWordCountdown === null && (
             <Animated.View
               style={styles.feedbackOverlayCenter}
               entering={ZoomIn.duration(400).springify().damping(20).stiffness(120)}
@@ -411,6 +434,35 @@ const SpeedGameScreen = ({
                     {quizFeedback.replace(/\[(SUCCESS|CHECK|SKIP|TIMER)\]\s*/g, '')}
                   </Text>
                 </View>
+              </Animated.View>
+            </Animated.View>
+          )}
+
+          {/* Next Word Countdown Overlay */}
+          {nextWordCountdown !== null && nextWordCountdown > 0 && (
+            <Animated.View
+              style={styles.feedbackOverlayCenter}
+              entering={ZoomIn.duration(300).springify()}
+              exiting={FadeOut.duration(300)}
+            >
+              <Animated.View
+                style={[
+                  styles.countdownCard,
+                  {
+                    backgroundColor: themedColors.brutalYellow,
+                    borderColor: themedColors.brutalBlack,
+                    borderWidth: 6,
+                    padding: 40,
+                    ...shadowStyle,
+                  },
+                ]}
+              >
+                <Text style={[styles.countdownText, { color: themedColors.brutalBlack, fontSize: 20, marginBottom: 10 }]}>
+                  ⏭️ NEXT WORD IN
+                </Text>
+                <Text style={[styles.countdownNumber, { color: themedColors.brutalBlack, fontSize: 72, fontWeight: 'bold' }]}>
+                  {nextWordCountdown}
+                </Text>
               </Animated.View>
             </Animated.View>
           )}
@@ -519,12 +571,12 @@ const SpeedGameScreen = ({
           onPress={onSimulateDetection}
           onPressIn={detectButtonAnim.handlePressIn}
           onPressOut={detectButtonAnim.handlePressOut}
-          disabled={isDetecting}
+          disabled={isDetecting || nextWordCountdown !== null}
           activeOpacity={1}
           entering={ZoomIn.duration(400).delay(100)}
         >
           <Text style={[styles.detectButtonText, { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }]}>
-            {isDetecting ? 'DETECTING...' : '🤚 DETECT SIGN'}
+            {nextWordCountdown !== null ? '⏸️ WAITING...' : isDetecting ? 'DETECTING...' : '🤚 DETECT SIGN'}
           </Text>
         </AnimatedTouchableOpacity>
       </View>
@@ -909,6 +961,21 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: colors.brutalGreen,
     transition: 'width 0.3s ease',
+  },
+  countdownCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+    borderRadius: 0,
+  },
+  countdownText: {
+    fontFamily: 'Sora-Bold',
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+  countdownNumber: {
+    fontFamily: 'Sora-ExtraBold',
+    textAlign: 'center',
   },
 });
 
