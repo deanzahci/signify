@@ -1,6 +1,7 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "./Dockerfile"
+rootDirectory = "./back"
 
 [deploy]
 startCommand = "uv run python main.py"
