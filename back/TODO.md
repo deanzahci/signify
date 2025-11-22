@@ -1,0 +1,3 @@
+- [ ] adoption to the LSTM model (input and output)
+- [ ] set threshoulds or any algolithms for the model char/word outputs
+- [ ] check if the answer is corret on the backend and return the t/f

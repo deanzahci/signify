@@ -1,9 +1,10 @@
+import logging
 import sys
-import numpy as np
-import torch
 from pathlib import Path
 from typing import List, Optional
-import logging
+
+import numpy as np
+import torch
 
 from config import LSTM_MODEL_PATH, LSTM_NUM_CLASSES
 

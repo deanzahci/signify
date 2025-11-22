@@ -2,7 +2,7 @@
 name = "back"
 version = "0.1.0"
 description = "Add your description here"
-readme = "README.md"
+readme = ""
 requires-python = ">=3.11"
 dependencies = [
     "mediapipe>=0.10.21",

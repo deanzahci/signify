@@ -1,6 +1,6 @@
-import json
 import base64
-from typing import Dict, Any, Optional
+import json
+from typing import Any, Dict, Optional
 
 
 def validate_message(message: Any) -> Optional[Dict]:

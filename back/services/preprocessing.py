@@ -1,14 +1,16 @@
-import cv2
-import numpy as np
-import mediapipe as mp
-from typing import Optional
 import logging
+from typing import Optional
+
+import cv2
+import mediapipe as mp
+import numpy as np
+
 from config import (
-    MEDIAPIPE_MODEL_COMPLEXITY,
+    HAND_LANDMARKS,
+    MEDIAPIPE_MAX_NUM_HANDS,
     MEDIAPIPE_MIN_DETECTION_CONFIDENCE,
     MEDIAPIPE_MIN_TRACKING_CONFIDENCE,
-    MEDIAPIPE_MAX_NUM_HANDS,
-    HAND_LANDMARKS,
+    MEDIAPIPE_MODEL_COMPLEXITY,
     TOTAL_LANDMARKS,
 )
 

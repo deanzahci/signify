@@ -1,5 +1,6 @@
 import time
 from typing import Optional
+
 from config import THROTTLE_MIN_INTERVAL_MS, THROTTLE_PROBABILITY_THRESHOLD
 
 
