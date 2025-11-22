@@ -24,7 +24,7 @@ async def test_helpers():
     print("\n1. Testing async helpers:")
 
     # Test validation
-    valid_msg = {"jpeg_blob": b"fake_jpeg_data", "new_letter": "A"}
+    valid_msg = {"jpeg_blob": b"fake_jpeg_data", "new_word_letter": "A"}
     result = validate_message(valid_msg)
     print(f"   Valid message: {result is not None}")
 
@@ -35,8 +35,8 @@ async def test_helpers():
     # Test formatting
     response = format_response("B", 0.8567)
     print(f"   Response format: {response}")
-    assert '"maxarg_letter": "B"' in response
-    assert '"target_arg_prob": 0.8567' in response
+    assert '"detected_word_letter": "B"' in response
+    assert '"target_lettr_prob": 0.8567' in response
 
 
 async def test_metrics():
@@ -71,7 +71,7 @@ async def test_full_pipeline():
         test_image = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
         success, jpeg_bytes = cv2.imencode(".jpg", test_image)
 
-        message = {"jpeg_blob": jpeg_bytes.tobytes(), "new_letter": None}
+        message = {"jpeg_blob": jpeg_bytes.tobytes(), "new_word_letter": None}
 
         await producer.handle_message(message, mock_ws)
 
@@ -98,13 +98,13 @@ async def test_emergency_reset_during_processing():
     test_image = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
     success, jpeg_bytes = cv2.imencode(".jpg", test_image)
 
-    message1 = {"jpeg_blob": jpeg_bytes.tobytes(), "new_letter": None}
+    message1 = {"jpeg_blob": jpeg_bytes.tobytes(), "new_word_letter": None}
 
     # Don't await, let it run in background
     task = asyncio.create_task(producer.handle_message(message1, mock_ws))
 
     # Immediately send emergency reset
-    message2 = {"jpeg_blob": jpeg_bytes.tobytes(), "new_letter": "B"}
+    message2 = {"jpeg_blob": jpeg_bytes.tobytes(), "new_word_letter": "B"}
 
     await producer.handle_message(message2, mock_ws)
 
@@ -136,7 +136,7 @@ async def test_backpressure():
 
     tasks = []
     for i in range(5):
-        message = {"jpeg_blob": jpeg_bytes.tobytes(), "new_letter": None}
+        message = {"jpeg_blob": jpeg_bytes.tobytes(), "new_word_letter": None}
         task = asyncio.create_task(producer.handle_message(message, mock_ws))
         tasks.append(task)
 

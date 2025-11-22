@@ -1,4 +1,5 @@
-- [ ] adoption to the LSTM model (input and output)
-- [ ] set threshoulds or any algolithms for the model char/word outputs
+- [ ] change the json format to adopt to words
 - [ ] adopt to have one or two hands
-- [ ] change the json format
+- [ ] deploy the model on railway
+- [ ] adoption to the LSTM model input and output format
+- [ ] set threshoulds or any algolithms for the model char/word outputs

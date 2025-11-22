@@ -10,7 +10,7 @@ def validate_message(message: Any) -> Optional[Dict]:
     Expected format:
     {
         "jpeg_blob": base64 string or bytes,
-        "new_letter": str or null
+        "new_word_letter": str or null
     }
 
     Returns:
@@ -39,15 +39,15 @@ def validate_message(message: Any) -> Optional[Dict]:
     elif not isinstance(jpeg_blob, bytes):
         return None
 
-    new_letter = data.get("new_letter", None)
+    new_word_letter = data.get("new_word_letter", None)
 
-    if new_letter is not None and not isinstance(new_letter, str):
+    if new_word_letter is not None and not isinstance(new_word_letter, str):
         return None
 
-    if new_letter is not None and len(new_letter) != 1:
+    if new_word_letter is not None and len(new_word_letter) != 1:
         return None
 
-    return {"jpeg_blob": jpeg_blob, "new_letter": new_letter}
+    return {"jpeg_blob": jpeg_blob, "new_word_letter": new_word_letter}
 
 
 def format_response(maxarg_letter: str, target_arg_prob: float) -> str:
@@ -62,8 +62,9 @@ def format_response(maxarg_letter: str, target_arg_prob: float) -> str:
         JSON string
     """
     response = {
-        "maxarg_letter": maxarg_letter,
-        "target_arg_prob": round(target_arg_prob, 4),
+        "detected_word_letter": maxarg_letter,
+        "target_word_prob": 0.0,
+        "target_lettr_prob": round(target_arg_prob, 4),
     }
     return json.dumps(response)
 

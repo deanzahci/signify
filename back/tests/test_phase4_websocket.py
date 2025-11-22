@@ -166,7 +166,7 @@ class TestMessageFlow:
                 jpeg_bytes = self.create_test_jpeg()
                 message = {
                     "jpeg_blob": base64.b64encode(jpeg_bytes).decode("utf-8"),
-                    "new_letter": None,
+                    "new_word_letter": None,
                 }
 
                 # Send message
@@ -179,11 +179,11 @@ class TestMessageFlow:
                     data = json.loads(response)
 
                     # Verify response format
-                    assert "maxarg_letter" in data or "error" in data
+                    assert "detected_word_letter" in data or "error" in data
                     print(f"   Received response: {data}")
 
-                    if "maxarg_letter" in data:
-                        assert "target_arg_prob" in data
+                    if "detected_word_letter" in data:
+                        assert "target_lettr_prob" in data
                         print("   Valid response format: PASS")
                     else:
                         print(f"   Server returned error: {data.get('error')}")
@@ -242,7 +242,7 @@ class TestMessageFlow:
                 jpeg_bytes = self.create_test_jpeg()
                 message = {
                     "jpeg_blob": base64.b64encode(jpeg_bytes).decode("utf-8"),
-                    "new_letter": "B",
+                    "new_word_letter": "B",
                 }
 
                 await websocket.send(json.dumps(message))
@@ -253,8 +253,8 @@ class TestMessageFlow:
                     response = await asyncio.wait_for(websocket.recv(), timeout=2.0)
                     data = json.loads(response)
 
-                    assert "target_arg_prob" in data
-                    assert data["target_arg_prob"] == 0.0
+                    assert "target_lettr_prob" in data
+                    assert data["target_lettr_prob"] == 0.0
                     print(f"   Emergency reset response: {data}")
                     print("   target_arg_prob is 0.0: PASS")
 
@@ -288,7 +288,7 @@ class TestErrorHandling:
             jpeg_bytes = TestMessageFlow().create_test_jpeg()
             message = {
                 "jpeg_blob": base64.b64encode(jpeg_bytes).decode("utf-8"),
-                "new_letter": None,
+                "new_word_letter": None,
             }
             await websocket.send(json.dumps(message))
             await websocket.close()
@@ -364,7 +364,7 @@ class TestEndToEnd:
                 for i in range(35):
                     message = {
                         "jpeg_blob": base64.b64encode(jpeg_bytes).decode("utf-8"),
-                        "new_letter": None,
+                        "new_word_letter": None,
                     }
                     await websocket.send(json.dumps(message))
                     await asyncio.sleep(0.05)  # Small delay between frames
@@ -379,16 +379,16 @@ class TestEndToEnd:
                     if "error" in data:
                         print(f"   Received error: {data['error']}")
                     else:
-                        assert "maxarg_letter" in data
-                        assert "target_arg_prob" in data
+                        assert "detected_word_letter" in data
+                        assert "target_lettr_prob" in data
 
                         # Verify data types and ranges
-                        assert isinstance(data["maxarg_letter"], str)
-                        assert len(data["maxarg_letter"]) == 1
-                        assert data["maxarg_letter"].isalpha()
+                        assert isinstance(data["detected_word_letter"], str)
+                        assert len(data["detected_word_letter"]) == 1
+                        assert data["detected_word_letter"].isalpha()
 
-                        assert isinstance(data["target_arg_prob"], (int, float))
-                        assert 0.0 <= data["target_arg_prob"] <= 1.0
+                        assert isinstance(data["target_lettr_prob"], (int, float))
+                        assert 0.0 <= data["target_lettr_prob"] <= 1.0
 
                         print(f"   Received prediction: {data}")
                         print("   Full pipeline working: PASS")

@@ -79,7 +79,7 @@ class Producer:
             return
 
         jpeg_blob = parsed["jpeg_blob"]
-        new_letter = parsed["new_letter"]
+        new_letter = parsed["new_word_letter"]
 
         if new_letter is not None:
             await self._emergency_reset(new_letter, websocket)
