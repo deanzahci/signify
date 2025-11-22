@@ -1,6 +1,6 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "back/Dockerfile"
+dockerfilePath = "Dockerfile"
 rootDirectory = "back"
 
 [deploy]
