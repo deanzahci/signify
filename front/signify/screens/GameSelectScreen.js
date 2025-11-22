@@ -148,7 +148,7 @@ const GameSelectScreen = ({ onSelectMode, userStats = {} }) => {
             }
           ]}
           activeOpacity={0.9}
-          onPress={() => onSelectMode('quizPreview')}
+          onPress={() => onSelectMode(detectionMode === 'word' ? 'word' : 'quiz')}
         >
           <View style={styles.modeIcon}>
             <NBIcon name="Brain" size={48} color={isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite} />
@@ -174,7 +174,7 @@ const GameSelectScreen = ({ onSelectMode, userStats = {} }) => {
             }
           ]}
           activeOpacity={0.9}
-          onPress={() => onSelectMode('speedPreview')}
+          onPress={() => onSelectMode('speed')}
         >
           <View style={styles.modeIcon}>
             <NBIcon name="Lightning" size={48} color={isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite} />

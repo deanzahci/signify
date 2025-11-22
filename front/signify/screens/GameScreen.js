@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { doc, updateDoc, increment } from 'firebase/firestore';
 import { db, auth } from '../config/firebase';
 import { updateLetterStats } from '../utils/gameApi';
@@ -8,7 +8,6 @@ import {
   fetchSpeedWords as speedGame
 } from '../utils/gameApi';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { initializeWordDetection } from '../services/wordDetection';
 
 // Import screens
 import GameSelectScreen from './GameSelectScreen';
@@ -41,6 +40,10 @@ const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
   const [isDetecting, setIsDetecting] = useState(false);
   const [quizFeedback, setQuizFeedback] = useState('');
 
+  // Use refs to avoid stale closures in event handlers
+  const currentLetterIndexRef = useRef(0);
+  const quizQuestionRef = useRef(null);
+
   // ==================== QUIZ STATES ====================
   const [quizScore, setQuizScore] = useState(0);
   const [quizRound, setQuizRound] = useState(0);
@@ -61,17 +64,16 @@ const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
   const [speedWordsFromApi, setSpeedWordsFromApi] = useState([]);
 
   // ==================== WORD MODE DETECTION ====================
-  const [wordDetectionService, setWordDetectionService] = useState(null);
   const [isWordMode, setIsWordMode] = useState(false);
 
-  // Initialize word detection service on mount
+  // Keep refs in sync with state values
   useEffect(() => {
-    const setupWordDetection = async () => {
-      const service = await initializeWordDetection();
-      setWordDetectionService(service);
-    };
-    setupWordDetection();
-  }, []);
+    currentLetterIndexRef.current = currentLetterIndex;
+  }, [currentLetterIndex]);
+
+  useEffect(() => {
+    quizQuestionRef.current = quizQuestion;
+  }, [quizQuestion]);
 
   // Mode selection handler
   const handleModeSelect = (mode) => {
@@ -250,6 +252,7 @@ const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
 
   const startQuizGame = () => {
     console.log('Starting quiz game...');
+    setCurrentScreen('quizGame');
     setQuizGameActive(true);
     setQuizFeedback('');
     // Don't generate new question - keep the one from preview
@@ -343,7 +346,11 @@ const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
           }, 1500);
         } else {
           // Move to next letter in the same word
-          setCurrentLetterIndex(currentLetterIndex + 1);
+          const newIndex = currentLetterIndex + 1;
+          setCurrentLetterIndex(newIndex);
+
+          // Log for debugging
+          console.log(`Skipped to letter index ${newIndex}: ${quizQuestion.word[newIndex]}`);
 
           setTimeout(() => {
             setQuizFeedback('');
@@ -374,18 +381,22 @@ const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
 
   // Handle actual letter detection for Quiz Mode
   const handleQuizLetterDetected = async (detectedLetter) => {
-    if (!quizQuestion || !quizGameActive) return;
+    if (!quizQuestionRef.current || !quizGameActive) return;
 
-    // Don't check isDetecting here - allow immediate detection
+    // Use refs to get the current values to avoid stale closures
+    const currentQuestion = quizQuestionRef.current;
+    const currentIndex = currentLetterIndexRef.current;
 
     // Check if the detected letter matches the expected letter
-    const expectedLetter = quizQuestion.word[currentLetterIndex];
+    const expectedLetter = currentQuestion.word[currentIndex];
+    console.log(`Quiz detection: Word="${currentQuestion.word}", Index=${currentIndex}, Expected="${expectedLetter}", Got="${detectedLetter}"`);
+
     if (detectedLetter !== expectedLetter) {
-      console.log(`Letter mismatch: expected ${expectedLetter}, got ${detectedLetter}`);
+      console.log(`Letter mismatch: expected ${expectedLetter} at index ${currentIndex}, got ${detectedLetter}`);
       return;
     }
 
-    console.log(`Correct letter detected: ${detectedLetter} at index ${currentLetterIndex}`);
+    console.log(`Correct letter detected: ${detectedLetter} at index ${currentIndex}`);
 
     // Add the detected letter to signed letters
     const newSignedLetters = [...signedLetters, detectedLetter];
@@ -398,9 +409,9 @@ const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
     }
 
     // Check if word is complete
-    if (currentLetterIndex + 1 >= quizQuestion.word.length) {
+    if (currentIndex + 1 >= currentQuestion.word.length) {
       // Word completed!
-      setCurrentLetterIndex(currentLetterIndex + 1);
+      setCurrentLetterIndex(currentIndex + 1);
       setQuizScore(quizScore + 10);
       setQuizFeedback('✅ CORRECT! +10 points');
       setQuizRound(quizRound + 1);
@@ -413,7 +424,7 @@ const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
       }, 1500);
     } else {
       // Move to next letter immediately
-      setCurrentLetterIndex(currentLetterIndex + 1);
+      setCurrentLetterIndex(currentIndex + 1);
       setTimeout(() => {
         setQuizFeedback('');
       }, 1000);
@@ -566,6 +577,7 @@ const GameScreen = ({ user, userStats, onBackPress, onCameraReady }) => {
 
   const startTypingGame = () => {
     console.log('Starting typing game...');
+    setCurrentScreen('speedGame');
     setTypingGameActive(true);
     setTypingStartTime(Date.now());
     setQuizFeedback('');

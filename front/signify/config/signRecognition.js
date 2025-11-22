@@ -25,10 +25,10 @@ const config = {
     // Detection mode: 'letter' or 'word'
     // 'letter' - detect individual letters
     // 'word' - detect complete words
-    defaultMode: 'word', // Change to 'letter' for letter-by-letter detection
+    defaultMode: 'letter', // Change to 'word' for word detection
 
     // Confidence threshold for accepting a sign (0-1)
-    confidenceThreshold: 0.8, // 80% confidence required
+    confidenceThreshold: 0.7, // 70% confidence required
 
     // Number of consecutive detections required
     requiredConsecutiveDetections: 3,
