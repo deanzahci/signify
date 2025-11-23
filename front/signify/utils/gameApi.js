@@ -50,7 +50,7 @@ const getOpenAIKey = async () => {
     }
 
     // Hardcoded fallback key
-    const hardcodedKey = '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';
+    const hardcodedKey = 'sorry_no_leaks_please_1234567890';
     
     // Always update AsyncStorage with the new key
     await AsyncStorage.setItem('OPENAI_API_KEY', hardcodedKey);
