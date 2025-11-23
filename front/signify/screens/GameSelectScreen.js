@@ -46,13 +46,6 @@ const GameSelectScreen = ({ onSelectMode, userStats = {} }) => {
 
   const handleToggleMode = async () => {
     const newMode = detectionMode === 'letter' ? 'word' : 'letter';
-    
-    // Show alert for word mode and prevent toggle
-    if (newMode === 'word') {
-      alert('Under Construction');
-      return; // Don't allow switching to word mode
-    }
-    
     setDetectionMode(newMode);
     toggleAnimation.value = withSpring(newMode === 'word' ? 1 : 0, {
       damping: 15,
@@ -155,7 +148,7 @@ const GameSelectScreen = ({ onSelectMode, userStats = {} }) => {
             }
           ]}
           activeOpacity={0.9}
-          onPress={() => onSelectMode(detectionMode === 'word' ? 'word' : 'quiz')}
+          onPress={() => onSelectMode('quizPreview')}
         >
           <View style={styles.modeIcon}>
             <NBIcon name="Brain" size={48} color={isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite} />
@@ -181,7 +174,7 @@ const GameSelectScreen = ({ onSelectMode, userStats = {} }) => {
             }
           ]}
           activeOpacity={0.9}
-          onPress={() => onSelectMode('speed')}
+          onPress={() => onSelectMode('speedPreview')}
         >
           <View style={styles.modeIcon}>
             <NBIcon name="Lightning" size={48} color={isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite} />

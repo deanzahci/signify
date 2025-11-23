@@ -88,27 +88,19 @@ class SignLanguageWebSocket {
       try {
         const data = JSON.parse(event.data);
 
-        // Backend API documentation states it should return:
-        // - maxarg_letter: The detected letter (A-Z)
-        // - target_arg_prob: Confidence score (0.0-1.0)
+        // Map the actual backend response fields to what the frontend expects
+        // Backend sends: detected_word_letter, target_word_prob, target_lettr_prob
+        // Frontend expects: maxarg_letter/maxarg_word, target_arg_prob
 
-        // Check if backend is using documented field names
-        if (data.maxarg_letter !== undefined) {
-          // Backend is using correct documented field names
-          if (this.callbacks.onMessage) {
-            this.callbacks.onMessage(data);
-          }
-        } else if (data.detected_word_letter !== undefined) {
-          // Backend is using different field names, map them
-          const mappedData = {
-            maxarg_letter: data.detected_word_letter,
-            maxarg_word: data.detected_word_letter, // For compatibility
-            target_arg_prob: data.target_lettr_prob || data.target_word_prob || 0
-          };
+        const mappedData = {
+          maxarg_letter: data.detected_word_letter,
+          maxarg_word: data.detected_word_letter, // Same value for both
+          target_arg_prob: data.target_lettr_prob || data.target_word_prob || 0
+        };
 
-          if (this.callbacks.onMessage) {
-            this.callbacks.onMessage(mappedData);
-          }
+        if (this.callbacks.onMessage) {
+          // Pass the mapped data to callbacks so the UI gets the expected format
+          this.callbacks.onMessage(mappedData);
         }
       } catch (error) {
         console.error('❌ Error parsing WebSocket message:', error);
@@ -194,8 +186,7 @@ class SignLanguageWebSocket {
   }
 
   /**
-   * Send a new target letter to inform backend of current target
-   * Backend uses this to calculate target_arg_prob (confidence for correct letter)
+   * Send a new target letter to reset backend state
    */
   sendNewLetter(letter) {
     if (!this.isConnected || !this.ws) {

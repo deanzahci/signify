@@ -19,7 +19,7 @@ class SignDetectionManager {
       onConfidenceUpdate: null,
       onConnectionChange: null
     };
-    this.confidenceThreshold = 0; // 70% confidence to accept
+    this.confidenceThreshold = 0.7; // 70% confidence to accept
     this.lastDetectedLetter = null;
     this.lastDetectedWord = null;
     this.consecutiveDetections = 0;

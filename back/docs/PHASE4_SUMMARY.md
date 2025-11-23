@@ -15,7 +15,6 @@ Phase 4 successfully implements the final backend component: a production-ready 
 ### 1. Core Server Implementation (main.py)
 
 **SignifyServer Class** - Fully implemented with all required methods:
-
 - `__init__()` - Initialize server attributes and shutdown event
 - `setup()` - Initialize logging, thread pool, state, metrics, and producer
 - `start()` - Start WebSocket server and wait for shutdown signal
@@ -24,7 +23,6 @@ Phase 4 successfully implements the final backend component: a production-ready 
 - `handle_signal()` - Handle SIGINT and SIGTERM for graceful termination
 
 **Entry Point**:
-
 - `async main()` - Main entry point with signal handler registration
 - `__main__` block - KeyboardInterrupt handling and error reporting
 
@@ -35,7 +33,6 @@ Added websockets 15.0.1 to pyproject.toml using uv package manager.
 ### 3. Comprehensive Test Suite (test/test_phase4_websocket.py)
 
 **Test Coverage**:
-
 - Server lifecycle tests (initialization, start/stop)
 - Connection tests (single and multiple clients)
 - Message flow tests (valid, invalid, emergency reset)
@@ -55,7 +52,6 @@ Created executable bash script for easy server startup using uv.
 ### WebSocket Protocol
 
 **Input Message Format**:
-
 ```json
 {
     "jpeg_blob": "<base64_encoded_jpeg>",
@@ -64,19 +60,17 @@ Created executable bash script for easy server startup using uv.
 ```
 
 **Output Message Format**:
-
 ```json
 {
-  "maxarg_letter": "B",
-  "target_arg_prob": 0.8567
+    "maxarg_letter": "B",
+    "target_arg_prob": 0.8567
 }
 ```
 
 **Error Response Format**:
-
 ```json
 {
-  "error": "Error description"
+    "error": "Error description"
 }
 ```
 
@@ -132,7 +126,6 @@ Consumer → Preprocessing → Buffering → Inference → Smoothing
 ## Configuration
 
 All configuration in `config.py`:
-
 - WEBSOCKET_HOST: 0.0.0.0
 - WEBSOCKET_PORT: 8765
 - THREAD_POOL_MAX_WORKERS: 4
@@ -145,21 +138,18 @@ All configuration in `config.py`:
 ### Start Server
 
 **Option 1: Using launch script**
-
 ```bash
 cd back
 ./start_server.sh
 ```
 
 **Option 2: Direct execution**
-
 ```bash
 cd back
 uv run python main.py
 ```
 
 **Option 3: With environment variables**
-
 ```bash
 WEBSOCKET_HOST=0.0.0.0 WEBSOCKET_PORT=8765 uv run python main.py
 ```
@@ -178,7 +168,7 @@ async def connect():
             "jpeg_blob": base64_encoded_jpeg,
             "new_letter": None
         }))
-
+        
         # Receive response
         response = await websocket.recv()
         data = json.loads(response)
@@ -259,14 +249,12 @@ Phase 4 completion marks the backend as fully functional and production-ready.
 ## Files Modified/Created
 
 ### Created
-
 - `back/main.py` - WebSocket server implementation (147 lines)
 - `back/test/test_phase4_websocket.py` - Comprehensive test suite (466 lines)
 - `back/start_server.sh` - Launch script
 - `back/PHASE4_SUMMARY.md` - This document
 
 ### Modified
-
 - `back/pyproject.toml` - Added websockets dependency
 
 ---
@@ -284,7 +272,6 @@ Phase 4 completion marks the backend as fully functional and production-ready.
 Phase 4 implementation is complete and all tests pass. The WebSocket server successfully integrates Phases 1-3 into a production-ready backend that can handle real-time sign language recognition for multiple concurrent users.
 
 The backend is now ready for:
-
 - Frontend integration
 - Real model training
 - Production deployment

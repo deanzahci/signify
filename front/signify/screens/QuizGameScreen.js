@@ -57,7 +57,7 @@ const LetterBox = ({ letter, idx, currentLetterIndex, styles, themedColors }) =>
           isCurrent && styles.letterDisplayTextCurrent,
         ]}
       >
-        {isCompleted ? (letter || '') : '?'}
+        {isCompleted ? letter : '?'}
       </Text>
     </Animated.View>
   );
@@ -75,8 +75,7 @@ const QuizGameScreen = ({
   onExitQuiz,
   onSkipQuestion,
   onSimulateDetection,
-  onCameraReady,
-  onLetterDetected
+  onCameraReady
 }) => {
   const { isDarkMode } = useTheme();
   const themedColors = useThemedColors();
@@ -139,8 +138,8 @@ const QuizGameScreen = ({
         onLetterDetected: (letter) => {
           console.log('Letter detected in Quiz:', letter);
           // In letter mode, use the actual detected letter
-          if (mode !== 'word' && onLetterDetected) {
-            onLetterDetected(letter);
+          if (mode !== 'word' && props.onLetterDetected) {
+            props.onLetterDetected(letter);
           } else if (mode !== 'word' && onSimulateDetection) {
             // Fallback to simulation if no letter handler provided
             onSimulateDetection();
@@ -212,26 +211,6 @@ const QuizGameScreen = ({
       successAnim.trigger();
     }
   }, [quizFeedback]);
-
-  // Automatic detection when confidence >= 85%
-  useEffect(() => {
-    if (
-      !isDetecting &&
-      currentConfidence >= 0.85 &&
-      detectedValue &&
-      quizQuestion &&
-      currentLetterIndex < quizQuestion.word.length
-    ) {
-      const targetLetter = quizQuestion.word[currentLetterIndex];
-      
-      // Check if detected letter matches target letter
-      if (detectedValue.toUpperCase() === targetLetter.toUpperCase()) {
-        console.log(`Auto-detected: ${detectedValue} at ${currentConfidence * 100}% confidence`);
-        // Automatically trigger detection
-        onSimulateDetection();
-      }
-    }
-  }, [currentConfidence, detectedValue, isDetecting, currentLetterIndex, quizQuestion]);
 
   // Track struggling behavior
   useEffect(() => {
@@ -357,9 +336,7 @@ const QuizGameScreen = ({
             </AnimatedTouchableOpacity>
 
             <Animated.View style={styles.topCenter} entering={FadeIn.duration(600).delay(400)}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Text style={styles.topScoreLabel}>LV{userLevelQuiz} | {quizScore}</Text>
-              </View>
+              <Text style={styles.topScoreLabel}>LV{userLevelQuiz} | {quizScore}</Text>
               <Text style={styles.topRoundLabel}>Round {quizRound + 1}</Text>
               {/* Floating score indicator */}
               {quizScore > prevScore && (
@@ -488,7 +465,7 @@ const QuizGameScreen = ({
                         currentLetterIndex >= quizQuestion.word.length && styles.letterDisplayTextCompleted
                       ]}
                     >
-                      {currentLetterIndex >= quizQuestion.word.length ? (letter || '') : '_'}
+                      {currentLetterIndex >= quizQuestion.word.length ? letter : '_'}
                     </Text>
                   </View>
                 ))}
@@ -549,7 +526,7 @@ const QuizGameScreen = ({
           entering={ZoomIn.duration(400).delay(100)}
         >
           <Text style={[styles.detectButtonText, { color: isDarkMode ? themedColors.brutalBlack : themedColors.brutalWhite }]}>
-            {isDetecting ? 'DETECTING...' : 'DETECT SIGN'}
+            {isDetecting ? 'DETECTING...' : '🤚 DETECT SIGN'}
           </Text>
         </AnimatedTouchableOpacity>
       </View>
@@ -678,7 +655,6 @@ const styles = StyleSheet.create({
   topCenter: {
     alignItems: 'center',
     flex: 0, // Don't let center grow and squeeze buttons
-    minWidth: 120, // Ensure enough space for "LV1 | 10"
   },
   topScoreLabel: {
     fontSize: 14,
@@ -689,9 +665,6 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderWidth: 3,
     borderColor: colors.brutalBlack,
-    textAlign: 'center',
-    flexWrap: 'nowrap',
-    whiteSpace: 'nowrap',
   },
   topRoundLabel: {
     fontSize: 12,

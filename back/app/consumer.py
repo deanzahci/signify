@@ -4,8 +4,6 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Optional
 
-import numpy as np
-
 from app.state import PipelineState
 from services.onnx_predictor import ONNXPredictor
 from services.preprocessing import PreprocessingService
@@ -34,10 +32,11 @@ class Consumer:
 
     async def process_frame(self, jpeg_bytes: bytes) -> Optional[Dict]:
         """
-        Process single frame with LSTM sequence-based inference.
+        Process single frame with per-frame ONNX inference.
 
-        Buffers 32 frames before running inference on the full sequence.
-        Returns default response while waiting for buffer to fill.
+        Note: Buffer is still populated for potential future use with
+        sequence models, but inference runs immediately on each frame
+        with the new ONNX model (sequence_length=1).
         """
         start_time = time.time()
 
@@ -51,42 +50,11 @@ class Consumer:
                 self.logger.debug("No hands detected, skipping frame")
                 return None
 
-            # 2. Buffer landmarks until we have 32 frames
+            # 2. Keep buffering for future sequence models (optional)
             self.state.keypoint_buffer.append(landmarks)
             self.logger.debug(
-                f"Buffered landmarks: {len(self.state.keypoint_buffer)}/32 frames"
-            )
-
-            # 3. Check if buffer is full (32 frames required for LSTM)
-            if not self.state.keypoint_buffer.is_full():
-                self.logger.debug("Buffer not full yet, waiting for more frames")
-                # Return default response for UX feedback
-                return {"maxarg_letter": "A", "target_arg_prob": 0.0}
-
-            # 4. Get sequence of 32 frames
-            sequence = self.state.keypoint_buffer.get_all()
-            if sequence is None:
-                self.logger.warning("Buffer full but get_all() returned None")
-                return None
-
-            # 5. Stack frames into sequence array
-            sequence_array = np.stack(sequence, axis=0)  # Shape: (32, 21, 3)
-            self.logger.debug(f"Stacked sequence shape: {sequence_array.shape}")
-
-            # 6. Run inference on 32-frame sequence
-            predicted_letter, confidence = await self._run_in_executor(
-                self.onnx_predictor.predict_sequence, sequence_array
-            )
-
-            self.logger.debug(
-                f"LSTM sequence prediction: {predicted_letter} ({confidence:.4f})"
-            )
-
-            self.metrics.record_inference()
-
-            # 7. Get full distribution for smoothing
-            distribution = await self._run_in_executor(
-                self.onnx_predictor.predict_sequence_distribution, sequence_array
+                f"Buffered landmarks: {len(self.state.keypoint_buffer)}/32 "
+                f"(buffer maintained but not used for ONNX inference)"
             )
 
             # 3. Run inference immediately on current frame (bypass buffer)
@@ -94,9 +62,7 @@ class Consumer:
                 self.onnx_predictor.predict, landmarks
             )
 
-            self.logger.debug(
-                f"Raw ONNX prediction: {predicted_letter} ({confidence:.4f})"
-            )
+            self.logger.debug(f"Raw ONNX prediction: {predicted_letter} ({confidence:.4f})")
 
             self.metrics.record_inference()
 
@@ -122,15 +88,14 @@ class Consumer:
             maxarg_letter, target_arg_prob = extract_metrics(
                 smoothed, self.state.current_target_letter
             )
-
+            
             max_prob = max(smoothed) if smoothed else 0.0
 
             self.logger.info(
-                f"LSTM inference result: {maxarg_letter} "
+                f"Inference result: {maxarg_letter} "
                 f"(target: {self.state.current_target_letter}, "
                 f"prob: {target_arg_prob:.3f}, "
-                f"max_prob: {max_prob:.3f}, "
-                f"buffer: 32/32 frames)"
+                f"max_prob: {max_prob:.3f})"
             )
 
             duration = time.time() - start_time
@@ -139,9 +104,7 @@ class Consumer:
             # Determine what probability to send back
             # If we have a target, send the probability of that target (accuracy)
             # If we don't (Free Mode), send the max probability (confidence)
-            display_prob = (
-                target_arg_prob if self.state.current_target_letter else max_prob
-            )
+            display_prob = target_arg_prob if self.state.current_target_letter else max_prob
 
             return {"maxarg_letter": maxarg_letter, "target_arg_prob": display_prob}
 

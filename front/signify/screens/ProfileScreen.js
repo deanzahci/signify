@@ -164,49 +164,33 @@ const ProfileScreen = () => {
   };
 
   const handleSignOut = () => {
-    // Use web-compatible confirm dialog if on web platform
-    if (typeof window !== 'undefined' && window.confirm) {
-      // Web platform
-      const confirmed = window.confirm('Are you sure you want to sign out?');
-      if (confirmed) {
-        performSignOut();
-      }
-    } else {
-      // Mobile platform
-      Alert.alert(
-        'Sign Out',
-        'Are you sure you want to sign out?',
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel',
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('Attempting to sign out...');
+              await signOut();
+              console.log('Sign out successful');
+              // The app navigation will automatically handle the redirect
+              // due to isAuthenticated becoming false in AuthContext
+            } catch (error) {
+              console.error('Sign out error:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
           },
-          {
-            text: 'Sign Out',
-            style: 'destructive',
-            onPress: performSignOut,
-          },
-        ],
-        { cancelable: true }
-      );
-    }
-  };
-
-  const performSignOut = async () => {
-    try {
-      console.log('Attempting to sign out...');
-      await signOut();
-      console.log('Sign out successful');
-      // The app navigation will automatically handle the redirect
-      // due to isAuthenticated becoming false in AuthContext
-    } catch (error) {
-      console.error('Sign out error:', error);
-      if (typeof window !== 'undefined' && window.alert) {
-        window.alert('Failed to sign out. Please try again.');
-      } else {
-        Alert.alert('Error', 'Failed to sign out. Please try again.');
-      }
-    }
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   // Get theme icon based on current mode

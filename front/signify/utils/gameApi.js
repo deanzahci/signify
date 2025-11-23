@@ -40,25 +40,20 @@ const APPROVED_WORDS_UPPER = APPROVED_WORD_LIST.map(word => word.toUpperCase());
  */
 const getOpenAIKey = async () => {
   try {
-    // First, try to get from environment variable (Expo)
-    const envKey = process.env.EXPO_PUBLIC_OPENAI_API_KEY;
-    if (envKey) {
-      console.log('✅ Using OpenAI API key from environment');
-      // Update AsyncStorage with the env key
-      await AsyncStorage.setItem('OPENAI_API_KEY', envKey);
-      return envKey;
+    // In development, we read from .env.local
+    // For React Native, we need to store it in AsyncStorage after initial setup
+    let key = await AsyncStorage.getItem('OPENAI_API_KEY');
+
+    // If not in AsyncStorage, set it (one-time setup)
+    if (!key) {
+      // This is your API key - stored temporarily for hackathon
+      key = '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';
+      await AsyncStorage.setItem('OPENAI_API_KEY', key);
     }
 
-    // Hardcoded fallback key
-    const hardcodedKey = 'sorry_no_leaks_please_1234567890';
-    
-    // Always update AsyncStorage with the new key
-    await AsyncStorage.setItem('OPENAI_API_KEY', hardcodedKey);
-    console.log('✅ Using hardcoded OpenAI API key');
-    
-    return hardcodedKey;
+    return key;
   } catch (error) {
-    console.error('❌ Error getting OpenAI key:', error);
+    console.error('Error getting OpenAI key:', error);
     return null;
   }
 };
@@ -128,12 +123,12 @@ async function generateWordsWithGPT(level, struggleLetters, gameType = 'quiz') {
 
     const apiKey = await getOpenAIKey();
     if (!apiKey) {
-      console.log('⚠️ No API key found, using default words');
+      console.log('No API key, falling back to default words');
       return getDefaultWordsForLevel(level, isWordMode);
     }
 
     const prompt = generateGPTPrompt(level, struggleLetters, gameType, isWordMode);
-    console.log('📝 Attempting to call OpenAI API for word generation...');
+    console.log('GPT Prompt:', prompt);
     console.log('Detection mode:', isWordMode ? 'word' : 'letter');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -157,13 +152,10 @@ async function generateWordsWithGPT(level, struggleLetters, gameType = 'quiz') {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-      console.error('❌ OpenAI API error:', errorData);
-      console.log('🔄 Falling back to default word bank');
-      return getDefaultWordsForLevel(level, isWordMode);
+      const errorData = await response.json();
+      console.error('OpenAI API error:', errorData);
+      return getDefaultWordsForLevel(level);
     }
-
-    console.log('✅ OpenAI API call successful!');
 
     const data = await response.json();
     const content = data.choices[0].message.content.trim();
@@ -627,8 +619,3 @@ export default {
   updateLetterStats,
   resetLetterStats
 };
-
-// Export named functions with aliases for backwards compatibility
-export const fetchQuizWords = quizGame;
-export const fetchWordModeWords = quizGame; // Word mode uses same function as quiz
-export const fetchSpeedWords = speedGame;
