@@ -627,3 +627,8 @@ export default {
   updateLetterStats,
   resetLetterStats
 };
+
+// Export named functions with aliases for backwards compatibility
+export const fetchQuizWords = quizGame;
+export const fetchWordModeWords = quizGame; // Word mode uses same function as quiz
+export const fetchSpeedWords = speedGame;

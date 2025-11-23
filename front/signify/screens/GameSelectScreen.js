@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedStyle,
@@ -18,7 +18,6 @@ const GameSelectScreen = ({ onSelectMode, userStats = {} }) => {
   const themedColors = useThemedColors();
   const shadowStyle = useThemedShadow('large');
   const [detectionMode, setDetectionMode] = useState('letter');
-  const [showConstructionModal, setShowConstructionModal] = useState(false);
   const toggleAnimation = useSharedValue(0);
 
   // Load saved detection mode preference
@@ -28,19 +27,46 @@ const GameSelectScreen = ({ onSelectMode, userStats = {} }) => {
 
   const loadDetectionMode = async () => {
     try {
-      // Always default to 'letter' mode
-      setDetectionMode('letter');
-      toggleAnimation.value = 0;
-      // Update the config
-      signConfig.recognition.defaultMode = 'letter';
+      const savedMode = await AsyncStorage.getItem('detectionMode');
+      if (savedMode) {
+        setDetectionMode(savedMode);
+        toggleAnimation.value = savedMode === 'word' ? 1 : 0;
+        // Update the config
+        signConfig.recognition.defaultMode = savedMode;
+      } else {
+        // Use config default
+        const defaultMode = signConfig.recognition.defaultMode;
+        setDetectionMode(defaultMode);
+        toggleAnimation.value = defaultMode === 'word' ? 1 : 0;
+      }
     } catch (error) {
       console.error('Error loading detection mode:', error);
     }
   };
 
-  const handleToggleMode = () => {
-    // Show "Under Construction" modal when user tries to toggle
-    setShowConstructionModal(true);
+  const handleToggleMode = async () => {
+    const newMode = detectionMode === 'letter' ? 'word' : 'letter';
+    
+    // Show alert for word mode and prevent toggle
+    if (newMode === 'word') {
+      alert('Under Construction');
+      return; // Don't allow switching to word mode
+    }
+    
+    setDetectionMode(newMode);
+    toggleAnimation.value = withSpring(newMode === 'word' ? 1 : 0, {
+      damping: 15,
+      stiffness: 150
+    });
+
+    // Save preference
+    try {
+      await AsyncStorage.setItem('detectionMode', newMode);
+      // Update the config
+      signConfig.recognition.defaultMode = newMode;
+    } catch (error) {
+      console.error('Error saving detection mode:', error);
+    }
   };
 
   // Animated styles for toggle
@@ -170,50 +196,6 @@ const GameSelectScreen = ({ onSelectMode, userStats = {} }) => {
           </Text>
         </TouchableOpacity>
       </ScrollView>
-
-      {/* Under Construction Modal */}
-      <Modal
-        visible={showConstructionModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowConstructionModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[
-            styles.modalContent,
-            {
-              backgroundColor: themedColors.brutalWhite,
-              borderColor: themedColors.brutalBlack,
-              ...shadowStyle,
-            }
-          ]}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalIcon, { color: themedColors.brutalBlack }]}>🚧</Text>
-              <Text style={[styles.modalTitle, { color: themedColors.brutalBlack }]}>
-                UNDER CONSTRUCTION
-              </Text>
-            </View>
-            <Text style={[styles.modalMessage, { color: themedColors.brutalBlack }]}>
-              Word mode is currently under development. Stay tuned for updates!
-            </Text>
-            <TouchableOpacity
-              style={[
-                styles.modalButton,
-                {
-                  backgroundColor: themedColors.brutalBlue,
-                  borderColor: themedColors.brutalBlack,
-                }
-              ]}
-              onPress={() => setShowConstructionModal(false)}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.modalButtonText, { color: themedColors.brutalWhite }]}>
-                OK
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -333,64 +315,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brutalWhite,
     borderWidth: 2,
     borderColor: colors.brutalBlack,
-  },
-
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: colors.brutalWhite,
-    borderWidth: 4,
-    borderColor: colors.brutalBlack,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    shadowColor: colors.brutalBlack,
-    shadowOffset: { width: 6, height: 6 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
-    elevation: 6,
-  },
-  modalHeader: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalIcon: {
-    fontSize: 48,
-    marginBottom: 12,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontFamily: 'Sora-Bold',
-    color: colors.brutalBlack,
-    textAlign: 'center',
-    letterSpacing: 1,
-  },
-  modalMessage: {
-    fontSize: 14,
-    fontFamily: 'Sora-Regular',
-    color: colors.brutalBlack,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-  },
-  modalButton: {
-    backgroundColor: colors.brutalBlue,
-    borderWidth: 3,
-    borderColor: colors.brutalBlack,
-    padding: 12,
-    alignItems: 'center',
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontFamily: 'Sora-Bold',
-    color: colors.brutalWhite,
-    letterSpacing: 0.5,
   },
 });
 
