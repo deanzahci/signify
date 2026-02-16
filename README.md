@@ -1,9 +1,10 @@
 # Signify
 
-Try it out: https://signifyasl.com
-For hosting the backend, Railway is recommended, but check the railway.toml for the settings if you want to host on others
+Gamify your sign language learning!
+This is a hackathon project at De Anza Hacks 4.0, where we joined as a team from De Anza Human Computer Interaction.
+Hosting has been paused, so you can access the website, but the code is open-source. Railway was used for backend hosting, so recommended.
 
-https://github.com/user-attachments/assets/aa8c28e3-3cfb-4980-8ec8-be0928220901
+https://github.com/user-attachments/assets/604d4828-50e0-409d-ac13-3ca89de70338
 
 ## Inspiration
 We were inspired to make the American Sign Language (ASL) truly accessible while raising awareness about ASL as a vibrant language used by millions. Drawing inspiration from engaging platforms like Wordle and MonkeyType, we asked: what if learning ASL could be just as addictive and rewarding? We were fascinated by the potential of computer vision and machine learning to create intuitive human-computer interactions that bridge physical gestures and the digital world. This project emerged from our belief that the best learning experiences don't feel like learning at all, transforming ASL education into an enjoyable experience that fits seamlessly into your daily routine.
@@ -25,6 +26,7 @@ We gained deep experience in ML deployment, particularly working with LSTMs and 
 
 ## What's next for Signify
 We plan to significantly expand Signify's capabilities by incorporating larger and more diverse datasets to improve recognition accuracy and vocabulary coverage. We'll leverage generative AI to dynamically create varied difficulty levels and personalized learning experiences. Beyond hand gestures, we're excited to integrate MediaPipe's full pose detection algorithm to capture entire body language. This will unlock access to much larger sign language databases that include body movements, facial expressions, and spatial positioning, enabling us to recognize sentiment and more nuanced communication. By understanding complete body language, Signify can evolve from teaching individual signs to facilitating rich, expressive conversations that capture the full depth of ASL communication.
+
 
 
 
