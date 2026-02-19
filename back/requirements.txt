@@ -1,5 +1,5 @@
-mediapipe>=0.10.21
-numpy>=1.26.4
+mediapipe==0.10.21
+numpy==1.26.4
 onnxruntime>=1.16.0
-opencv-python-headless>=4.11.0.86
-websockets>=15.0.1
+opencv-python-headless==4.11.0.86
+websockets==15.0.1

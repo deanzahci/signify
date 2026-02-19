@@ -45,11 +45,11 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "mediapipe", specifier = ">=0.10.21" },
-    { name = "numpy", specifier = ">=1.26.4" },
-    { name = "opencv-python-headless", specifier = ">=4.11.0.86" },
-    { name = "torch", specifier = ">=2.9.1" },
-    { name = "websockets", specifier = ">=15.0.1" },
+    { name = "mediapipe", specifier = "==0.10.21" },
+    { name = "numpy", specifier = "==1.26.4" },
+    { name = "opencv-python-headless", specifier = "==4.11.0.86" },
+    { name = "torch", specifier = "==2.9.1" },
+    { name = "websockets", specifier = "==15.0.1" },
 ]
 
 [[package]]
